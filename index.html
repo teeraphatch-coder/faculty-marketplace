@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ตลาดกลางสินค้ามือสองคณะ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --green: #2e9e6b;
+      --green-dark: #1f7a51;
+      --blue: #1e5fa8;
+      --gray-bg: #f1f4f6;
+      --ink: #1d2a33;
+      --line: #dde4e9;
+    }
+    body { font-family: 'Noto Sans Thai', sans-serif; background: var(--gray-bg); color: var(--ink); }
+    .app-nav { background: linear-gradient(90deg, var(--green), var(--blue)); }
+    .product-card { border: 1px solid var(--line); border-radius: 12px; transition: transform 0.2s; overflow: hidden; background: #fff; }
+    .product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+    .thumb { height: 180px; object-fit: cover; width: 100%; background: #e9ecef; }
+    .badge-status { font-size: 0.75rem; padding: 0.35em 0.65em; border-radius: 999px; }
+    .st-ready { background: #dff3e8; color: #1f7a51; }
+    .st-reserved { background: #fff1d6; color: #8a5a00; }
+    .st-sold { background: #dfe4e8; color: #3d4b55; }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark app-nav sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="index.html"><i class="fa-solid fa-store me-2"></i>ตลาดมือสองคณะ</a>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-light fw-bold text-success" data-bs-toggle="modal" data-bs-target="#modalAddProduct">
+          <i class="fa-solid fa-plus me-1"></i> ลงขายสินค้า
+        </button>
+        <a href="seller.html" class="btn btn-sm btn-outline-light">หน้าผู้ขาย</a>
+        <a href="admin.html" class="btn btn-sm btn-outline-light">ผู้ดูแลระบบ</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero & Search -->
+  <div class="bg-white border-bottom py-4 mb-4">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+          <h4 class="fw-bold mb-3">ค้นหาสินค้ามือสองสภาพดีภายในคณะ</h4>
+          <div class="input-group mb-3">
+            <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์ชื่อสินค้า หรือสถานที่นัดรับ...">
+            <button class="btn btn-success" onclick="applyFilters()"><i class="fa-solid fa-magnifying-glass"></i> ค้นหา</button>
+          </div>
+          <div class="d-flex gap-2 justify-content-center flex-wrap" id="catGroup">
+            <button class="btn btn-sm btn-outline-secondary active" onclick="filterCat('', this)">ทั้งหมด</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('หนังสือ/ตำรา', this)">หนังสือ/ตำรา</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('อุปกรณ์การเรียน', this)">อุปกรณ์การเรียน</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('เครื่องใช้ไฟฟ้า', this)">เครื่องใช้ไฟฟ้า</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('เสื้อผ้า/เครื่องแต่งกาย', this)">เสื้อผ้า/เครื่องแต่งกาย</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Grid -->
+  <main class="container mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold mb-0">รายการสินค้า</h5>
+      <span class="text-muted small" id="cntLabel">กำลังโหลด...</span>
+    </div>
+    <div class="row g-3" id="grid"></div>
+  </main>
+
+  <!-- Modal ลงขายสินค้า -->
+  <div class="modal fade" id="modalAddProduct" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">ลงประกาศขายสินค้า</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formAdd">
+            <div class="mb-2">
+              <label class="form-label small fw-bold">รหัสผู้ขาย (Seller ID)</label>
+              <input type="text" id="pSellerId" class="form-control" required placeholder="เช่น seller01">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">ชื่อผู้ขาย / นิสิต</label>
+              <input type="text" id="pSellerName" class="form-control" required placeholder="เช่น สมชาย ใจดี">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">ชื่อสินค้า</label>
+              <input type="text" id="pName" class="form-control" required placeholder="เช่น หนังสือ Calculus II สภาพ 95%">
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label small fw-bold">ราคา (บาท)</label>
+                <input type="number" id="pPrice" class="form-control" required placeholder="180">
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">หมวดหมู่</label>
+                <select id="pCategory" class="form-select">
+                  <option value="หนังสือ/ตำรา">หนังสือ/ตำรา</option>
+                  <option value="อุปกรณ์การเรียน">อุปกรณ์การเรียน</option>
+                  <option value="เครื่องใช้ไฟฟ้า">เครื่องใช้ไฟฟ้า</option>
+                  <option value="เสื้อผ้า/เครื่องแต่งกาย">เสื้อผ้า/เครื่องแต่งกาย</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">สถานที่นัดรับ</label>
+              <input type="text" id="pLocation" class="form-control" placeholder="เช่น โรงอาหารคณะ, ใต้ตึกวิศวะ">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">URL รูปภาพสินค้า</label>
+              <input type="url" id="pImg" class="form-control" value="https://picsum.photos/400/300">
+            </div>
+            <button type="submit" class="btn btn-success w-100 mt-3">ลงประกาศขาย</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let allProducts = [];
+    let selectedCat = '';
+
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const baht = n => Number(n || 0).toLocaleString('th-TH') + ' บาท';
+
+    // ดึงข้อมูล Realtime
+    db.collection('products').onSnapshot(snap => {
+      allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      applyFilters();
+    });
+
+    function filterCat(cat, btn) {
+      selectedCat = cat;
+      document.querySelectorAll('#catGroup .btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      let list = allProducts.filter(p => (p.moderation || 'approved') === 'approved'); // แสดงเฉพาะที่อนุมัติแล้ว
+
+      if (selectedCat) list = list.filter(p => p.category === selectedCat);
+      if (q) list = list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.location || '').toLowerCase().includes(q));
+
+      renderGrid(list);
+    }
+
+    function renderGrid(list) {
+      const grid = document.getElementById('grid');
+      document.getElementById('cntLabel').textContent = `พบ ${list.length} รายการ`;
+      grid.innerHTML = '';
+
+      if (!list.length) {
+        grid.innerHTML = '<div class="col-12 text-center text-muted py-5">ไม่พบรายการสินค้า</div>';
+        return;
+      }
+
+      list.forEach(p => {
+        const isReady = p.status === 'Ready'; // สถานะตรงกับ seller.html
+        const badgeCls = p.status === 'Ready' ? 'st-ready' : p.status === 'Reserved' ? 'st-reserved' : 'st-sold';
+        const badgeTxt = p.status === 'Ready' ? 'พร้อมขาย' : p.status === 'Reserved' ? 'ติดจอง' : 'ขายแล้ว';
+
+        grid.innerHTML += `
+          <div class="col-6 col-md-4 col-lg-3">
+            <div class="card product-card h-100">
+              <img src="${esc(p.imageUrl || 'https://picsum.photos/400/300')}" class="thumb" alt="">
+              <div class="card-body d-flex flex-column p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="badge bg-light text-dark border small">${esc(p.category || 'ทั่วไป')}</span>
+                  <span class="badge-status ${badgeCls}">${badgeTxt}</span>
+                </div>
+                <h6 class="fw-bold text-truncate mb-1">${esc(p.name)}</h6>
+                <div class="text-success fw-bold mb-1">${baht(p.price)}</div>
+                <div class="text-muted small mb-2"><i class="fa-solid fa-location-dot me-1"></i>${esc(p.location || 'นัดรับในคณะ')}</div>
+                <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
+                  <span class="small text-muted"><i class="fa-solid fa-user me-1"></i>${esc(p.sellerName || p.sellerId || 'ผู้ขาย')}</span>
+                  <button class="btn btn-sm ${isReady ? 'btn-outline-primary' : 'btn-light disabled'}" 
+                          onclick="buyProduct('${p.id}', '${esc(p.name)}', '${esc(p.sellerId)}', ${p.price})">
+                    ${isReady ? 'สั่งซื้อ' : 'ไม่พร้อมขาย'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // สร้างคำสั่งซื้อ (Order) ส่งไปยัง Dashboard ผู้ขาย
+    async function buyProduct(pid, pname, sellerId, price) {
+      const buyerName = prompt("กรุณาระบุชื่อของคุณ (ผู้ซื้อ):", "นิสิตผู้ซื้อ");
+      if (!buyerName) return;
+
+      try {
+        const batch = db.batch();
+        const orderRef = db.collection('orders').doc();
+
+        // 1. สร้าง Record ใน orders Collection (โครงสร้างสอดคล้องกับ seller.html)
+        batch.set(orderRef, {
+          productId: pid,
+          productName: pname,
+          sellerId: sellerId || 'seller01',
+          buyerName: buyerName,
+          status: 'requested', // ผู้ขายจะเห็นเป็นคำขอรอยืนยัน[cite: 2]
+          total: price,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 2. ปรับสถานะสินค้าเป็นติดจอง (Reserved)[cite: 2]
+        batch.update(db.collection('products').doc(pid), {
+          status: 'Reserved',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await batch.commit();
+        alert("ส่งคำขอสั่งซื้อเรียบร้อย! ระบบส่งข้อมูลไปยังแผงขายของผู้ขายแล้ว");
+      } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+      }
+    }
+
+    // ฟังก์ชั่นลงขายสินค้าใหม่
+    document.getElementById('formAdd').addEventListener('submit', async e => {
+      e.preventDefault();
+      try {
+        await db.collection('products').add({
+          sellerId: document.getElementById('pSellerId').value.trim(),
+          sellerName: document.getElementById('pSellerName').value.trim(),
+          name: document.getElementById('pName').value.trim(),
+          price: Number(document.getElementById('pPrice').value),
+          category: document.getElementById('pCategory').value,
+          location: document.getElementById('pLocation').value.trim(),
+          imageUrl: document.getElementById('pImg').value.trim(),
+          status: 'Ready', // พร้อมขาย[cite: 2]
+          moderation: 'approved', // ตั้งเป็นอนุมัติทันทีเพื่อใช้พรีเซนต์
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        bootstrap.Modal.getInstance(document.getElementById('modalAddProduct')).hide();
+        document.getElementById('formAdd').reset();
+        alert("ลงขายสำเร็จ!");
+      } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

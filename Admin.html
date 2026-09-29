@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ผู้ดูแลระบบ | ตลาดสินค้ามือสองคณะ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --green:#2e9e6b; --green-dark:#1f7a51; --blue:#1e5fa8; --blue-dark:#164a85; --gray-bg:#f1f4f6; --ink:#1d2a33; --muted:#6b7b86; --line:#dde4e9; }
+  body { font-family:'Noto Sans Thai',system-ui,sans-serif; background:var(--gray-bg); color:var(--ink); }
+  .app-nav { background:linear-gradient(90deg,var(--green),var(--blue)); }
+  .app-nav .navbar-brand { font-weight:700; color:#fff; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; }
+  .panel-head { padding:1rem 1.25rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
+  .panel-head h2 { font-size:1.1rem; font-weight:700; margin:0; }
+  .panel-body { padding:1rem 1.25rem; }
+  .stat { background:#fff; border:1px solid var(--line); border-left:4px solid var(--green); border-radius:10px; padding:1rem 1.1rem; height:100%; }
+  .stat.blue { border-left-color:var(--blue); }
+  .stat .n { font-size:1.7rem; font-weight:700; line-height:1.15; }
+  .stat .l { color:var(--muted); font-size:.85rem; }
+  .btn-green { background:var(--green); border-color:var(--green); color:#fff; }
+  .btn-green:hover,.btn-green:focus { background:var(--green-dark); border-color:var(--green-dark); color:#fff; }
+  .btn-blue { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .btn-blue:hover,.btn-blue:focus { background:var(--blue-dark); border-color:var(--blue-dark); color:#fff; }
+  .chip { display:inline-block; font-weight:500; font-size:.8rem; padding:.3em .7em; border-radius:999px; }
+  .c-pending { background:#fff1d6; color:#8a5a00; }
+  .c-approved { background:#dff3e8; color:#1f7a51; }
+  .c-hidden { background:#dfe4e8; color:#3d4b55; }
+  .chart-box { position:relative; height:280px; }
+  .empty { padding:2rem 1rem; text-align:center; color:var(--muted); }
+  .name-cell { min-width:160px; overflow-wrap:anywhere; }
+</style>
+</head>
+<body>
+
+<nav class="navbar app-nav">
+  <div class="container"><span class="navbar-brand">ตลาดมือสองคณะ · ผู้ดูแลระบบ</span></div>
+</nav>
+
+<main class="container py-4">
+  <div id="alertBox"></div>
+
+  <!-- 1. Dashboard cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="cMembers">0</div><div class="l">สมาชิกทั้งหมด</div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="cListed">0</div><div class="l">สินค้าที่ลงขายอยู่</div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat blue"><div class="n" id="cOrders">0</div><div class="l">คำสั่งซื้อเดือนนี้</div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat blue"><div class="n" id="cSales">0</div><div class="l">ยอดขายรวม (บาท)</div></div></div>
+  </div>
+
+  <!-- 2. Charts -->
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-7">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>ยอดขายตามช่วงวันที่</h2>
+          <div class="d-flex gap-2 align-items-center">
+            <input type="date" id="dFrom" class="form-control form-control-sm" aria-label="ตั้งแต่วันที่">
+            <span class="text-muted">–</span>
+            <input type="date" id="dTo" class="form-control form-control-sm" aria-label="ถึงวันที่">
+          </div>
+        </div>
+        <div class="panel-body"><div class="chart-box"><canvas id="salesChart"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="panel">
+        <div class="panel-head"><h2>สัดส่วนประเภทสินค้าขายดี</h2></div>
+        <div class="panel-body"><div class="chart-box"><canvas id="catChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 + 4. Moderation table + CSV -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>จัดการประกาศสินค้า</h2>
+      <div class="d-flex gap-2 flex-wrap">
+        <select id="fStatus" class="form-select form-select-sm" aria-label="กรองสถานะ">
+          <option value="">ทุกสถานะ</option>
+          <option value="pending">รออนุมัติ</option>
+          <option value="approved">อนุมัติแล้ว</option>
+          <option value="hidden">ซ่อนอยู่</option>
+        </select>
+        <input id="fSearch" class="form-control form-control-sm" placeholder="ค้นหาชื่อสินค้า/ผู้ขาย" aria-label="ค้นหา">
+        <button class="btn btn-sm btn-blue" id="btnCsv">Export CSV</button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>สินค้า</th><th>ผู้ขาย</th><th>ประเภท</th><th class="text-end">ราคา</th><th>สถานะประกาศ</th><th class="text-end">จัดการ</th></tr>
+        </thead>
+        <tbody id="pBody"><tr><td colspan="6" class="empty">กำลังโหลดข้อมูล...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="toast" class="toast text-bg-dark" role="status" aria-live="polite"><div class="toast-body" id="toastMsg"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+/* ===== ตั้งค่า ===== */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// สถานะ order ที่นับเป็น "ยอดขาย"
+const SALE_STATUSES = ['confirmed', 'completed'];
+// สถานะสินค้าที่นับเป็น "ลงขายอยู่"
+const LISTED_STATUSES = ['Ready', 'Reserved', 'Pending Payment'];
+const MOD = { pending:['รออนุมัติ','c-pending'], approved:['อนุมัติแล้ว','c-approved'], hidden:['ซ่อนอยู่','c-hidden'] };
+
+let users = [], products = [], orders = [];
+let salesChart, catChart;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const baht = n => Number(n || 0).toLocaleString('th-TH');
+const toDate = x => x && x.toDate ? x.toDate() : null;
+const modOf = p => p.moderation || 'pending';
+const orderAmount = o => Number(o.total ?? o.price ?? 0);
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function toast(m) { $('toastMsg').textContent = m; bootstrap.Toast.getOrCreateInstance($('toast'), { delay:2500 }).show(); }
+function showError(e) {
+  console.error(e);
+  $('alertBox').innerHTML = `<div class="alert alert-danger alert-dismissible">เกิดข้อผิดพลาด: ${esc(e.message || e)}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="ปิด"></button></div>`;
+}
+
+/* ===== Firestore listeners ===== */
+db.collection('users').onSnapshot(s => { users = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); }, showError);
+db.collection('products').onSnapshot(s => { products = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); renderCharts(); renderTable(); }, showError);
+db.collection('orders').onSnapshot(s => { orders = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); renderCharts(); }, showError);
+
+/* ===== 1. Cards ===== */
+function renderCards() {
+  const now = new Date();
+  const sales = orders.filter(o => SALE_STATUSES.includes(o.status));
+  const monthOrders = orders.filter(o => {
+    const d = toDate(o.createdAt);
+    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  $('cMembers').textContent = baht(users.length);
+  $('cListed').textContent = baht(products.filter(p => LISTED_STATUSES.includes(p.status) && modOf(p) === 'approved').length);
+  $('cOrders').textContent = baht(monthOrders.length);
+  $('cSales').textContent = baht(sales.reduce((s, o) => s + orderAmount(o), 0));
+}
+
+/* ===== 2. Charts ===== */
+const GREEN = '#2e9e6b', BLUE = '#1e5fa8';
+const PALETTE = ['#2e9e6b','#1e5fa8','#7fc8a9','#6fa3d8','#9aa9b3','#c9d3d9'];
+
+(function initDates() {
+  const to = new Date(), from = new Date();
+  from.setDate(to.getDate() - 29);
+  $('dFrom').value = ymd(from);
+  $('dTo').value = ymd(to);
+  $('dFrom').addEventListener('change', renderCharts);
+  $('dTo').addEventListener('change', renderCharts);
+})();
+
+function renderCharts() {
+  const sales = orders.filter(o => SALE_STATUSES.includes(o.status));
+  const from = new Date($('dFrom').value + 'T00:00:00');
+  const to = new Date($('dTo').value + 'T23:59:59');
+
+  // ยอดขายรายวันในช่วงที่เลือก
+  const byDay = {};
+  for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) byDay[ymd(d)] = 0;
+  sales.forEach(o => {
+    const d = toDate(o.createdAt);
+    if (d && d >= from && d <= to) byDay[ymd(d)] = (byDay[ymd(d)] || 0) + orderAmount(o);
+  });
+  const labels = Object.keys(byDay), data = Object.values(byDay);
+  if (salesChart) salesChart.destroy();
+  salesChart = new Chart($('salesChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label:'ยอดขาย (บาท)', data, borderColor:GREEN, backgroundColor:'rgba(46,158,107,.15)', fill:true, tension:.3, pointRadius:2 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  // สัดส่วนประเภทสินค้า (นับจากคำสั่งซื้อที่ขายสำเร็จ)
+  const catById = Object.fromEntries(products.map(p => [p.id, p.category]));
+  const byCat = {};
+  sales.forEach(o => {
+    const c = o.category || catById[o.productId] || 'อื่น ๆ';
+    byCat[c] = (byCat[c] || 0) + 1;
+  });
+  const entries = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  if (catChart) catChart.destroy();
+  catChart = new Chart($('catChart'), {
+    type: 'doughnut',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: PALETTE, borderWidth: 1 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+  });
+}
+
+/* ===== 3. Moderation table ===== */
+function filtered() {
+  const st = $('fStatus').value, q = $('fSearch').value.trim().toLowerCase();
+  return products
+    .filter(p => !st || modOf(p) === st)
+    .filter(p => !q || `${p.name} ${p.sellerName || p.sellerId}`.toLowerCase().includes(q))
+    .sort((a, b) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0));
+}
+
+function renderTable() {
+  const list = filtered();
+  if (!list.length) { $('pBody').innerHTML = '<tr><td colspan="6" class="empty">ไม่พบประกาศสินค้า</td></tr>'; return; }
+  $('pBody').innerHTML = list.map(p => {
+    const m = modOf(p), [txt, cls] = MOD[m] || [m, 'c-hidden'];
+    const approve = m !== 'approved' ? `<button class="btn btn-sm btn-green" data-act="approved" data-id="${p.id}">อนุมัติ</button>` : '';
+    const hide = m !== 'hidden' ? `<button class="btn btn-sm btn-outline-secondary" data-act="hidden" data-id="${p.id}">ซ่อน</button>` : '';
+    return `<tr>
+      <td class="name-cell fw-medium">${esc(p.name)}</td>
+      <td>${esc(p.sellerName || p.sellerId || '-')}</td>
+      <td>${esc(p.category || '-')}</td>
+      <td class="text-end">${baht(p.price)}</td>
+      <td><span class="chip ${cls}">${txt}</span></td>
+      <td class="text-end"><div class="d-flex gap-1 justify-content-end flex-wrap">${approve}${hide}
+        <button class="btn btn-sm btn-outline-danger" data-act="delete" data-id="${p.id}">ลบ</button></div></td></tr>`;
+  }).join('');
+}
+
+$('fStatus').addEventListener('change', renderTable);
+$('fSearch').addEventListener('input', renderTable);
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('#pBody [data-act]');
+  if (!b) return;
+  const { act, id } = b.dataset;
+  const p = products.find(x => x.id === id);
+  try {
+    if (act === 'delete') {
+      if (!confirm(`ลบประกาศ "${p ? p.name : ''}" ถาวร? การลบกู้คืนไม่ได้`)) return;
+      b.disabled = true;
+      await db.collection('products').doc(id).delete();
+      toast('ลบประกาศแล้ว');
+    } else {
+      b.disabled = true;
+      await db.collection('products').doc(id).update({ moderation: act, moderatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      toast(act === 'approved' ? 'อนุมัติประกาศแล้ว' : 'ซ่อนประกาศแล้ว');
+    }
+  } catch (err) { showError(err); b.disabled = false; }
+});
+
+/* ===== 4. Export CSV (ตามตัวกรองที่แสดงอยู่) ===== */
+function csvCell(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@]/.test(s)) s = "'" + s;           // กัน CSV formula injection
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+$('btnCsv').addEventListener('click', () => {
+  const rows = [['รหัส','ชื่อสินค้า','ผู้ขาย','ประเภท','ราคา','สถานะสินค้า','สถานะประกาศ','วันที่ลง']];
+  filtered().forEach(p => rows.push([
+    p.id, p.name, p.sellerName || p.sellerId, p.category, p.price, p.status,
+    (MOD[modOf(p)] || [modOf(p)])[0], toDate(p.createdAt) ? toDate(p.createdAt).toLocaleString('th-TH') : ''
+  ]));
+  const csv = '\uFEFF' + rows.map(r => r.map(csvCell).join(',')).join('\r\n'); // BOM ให้ Excel อ่านภาษาไทยถูก
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8;' }));
+  a.download = `products_${ymd(new Date())}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>

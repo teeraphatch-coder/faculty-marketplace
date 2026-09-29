@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>หน้าผู้ขาย | ตลาดสินค้ามือสองคณะ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #2e9e6b;
+    --green-dark: #1f7a51;
+    --blue: #1e5fa8;
+    --blue-dark: #164a85;
+    --gray-bg: #f1f4f6;
+    --ink: #1d2a33;
+    --muted: #6b7b86;
+    --line: #dde4e9;
+  }
+  body { font-family: 'Noto Sans Thai', system-ui, sans-serif; background: var(--gray-bg); color: var(--ink); }
+  .app-nav { background: linear-gradient(90deg, var(--green), var(--blue)); }
+  .app-nav .navbar-brand { font-weight: 700; color: #fff; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+  .panel-head { padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+  .panel-head h2 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+  .stat { border-left: 4px solid var(--green); padding: .75rem 1rem; background: #fff; border-radius: 8px; border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .stat.blue { border-left-color: var(--blue); }
+  .stat .n { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+  .stat .l { color: var(--muted); font-size: .85rem; }
+  .btn-green { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn-green:hover, .btn-green:focus { background: var(--green-dark); border-color: var(--green-dark); color: #fff; }
+  .btn-blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn-blue:hover, .btn-blue:focus { background: var(--blue-dark); border-color: var(--blue-dark); color: #fff; }
+  .badge-status { font-weight: 500; padding: .4em .7em; border-radius: 999px; }
+  .st-ready { background: #dff3e8; color: #1f7a51; }
+  .st-reserved { background: #fff1d6; color: #8a5a00; }
+  .st-pending { background: #e0ecfa; color: #164a85; }
+  .st-shipping { background: #d9f0f4; color: #0f6675; }
+  .st-sold { background: #dfe4e8; color: #3d4b55; }
+  .st-cancelled { background: #fbe1e1; color: #a12a2a; }
+  .product-row { display: flex; gap: .9rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+  .product-row:last-child { border-bottom: 0; }
+  .thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; background: var(--gray-bg); flex-shrink: 0; }
+  .product-body { flex: 1; min-width: 0; }
+  .product-name { font-weight: 700; overflow-wrap: anywhere; }
+  .actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+  .empty { padding: 2rem 1rem; text-align: center; color: var(--muted); }
+  @media (max-width: 575.98px) {
+    .thumb { width: 56px; height: 56px; }
+    .actions .btn { flex: 1 1 calc(50% - .4rem); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar app-nav">
+  <div class="container">
+    <span class="navbar-brand">ตลาดมือสองคณะ · ผู้ขาย</span>
+    <form class="d-flex gap-2" id="sellerForm">
+      <input id="sellerInput" class="form-control form-control-sm" placeholder="รหัสผู้ขาย (sellerId)" aria-label="รหัสผู้ขาย">
+      <button class="btn btn-sm btn-light" type="submit">ตกลง</button>
+    </form>
+  </div>
+</nav>
+
+<main class="container py-4">
+  <div id="alertBox"></div>
+
+  <div class="row g-2 mb-4">
+    <div class="col-6 col-md-3"><div class="stat"><div class="n" id="cntProducts">0</div><div class="l">สินค้าทั้งหมด</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat"><div class="n" id="cntReady">0</div><div class="l">พร้อมขาย</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat blue"><div class="n" id="cntRequests">0</div><div class="l">คำขอรอยืนยัน</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat blue"><div class="n" id="cntSold">0</div><div class="l">ขายแล้ว</div></div></div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Products -->
+    <section class="col-12 col-lg-7">
+      <div class="panel">
+        <div class="panel-head"><h2>สินค้าของฉัน</h2></div>
+        <div id="productList"><div class="empty">กรอกรหัสผู้ขายด้านบนเพื่อดูสินค้า</div></div>
+      </div>
+    </section>
+
+    <!-- Orders -->
+    <section class="col-12 col-lg-5">
+      <div class="panel">
+        <div class="panel-head"><h2>คำขอซื้อ/จองจากผู้ซื้อ</h2></div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light">
+              <tr><th>สินค้า</th><th>ผู้ซื้อ</th><th>สถานะ</th><th class="text-end">จัดการ</th></tr>
+            </thead>
+            <tbody id="orderBody"><tr><td colspan="4" class="empty">ยังไม่มีข้อมูล</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="toast" class="toast text-bg-dark" role="status" aria-live="polite">
+    <div class="toast-body" id="toastMsg"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+/* ===== 1) ใส่ค่า Firebase config ของโปรเจกต์คุณ (ใช้ชุดเดียวกับ index.html) ===== */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* ===== 2) Data Flow ของสถานะสินค้า ===== */
+const STATUS = {
+  Ready:            { label: 'พร้อมขาย',        cls: 'st-ready' },
+  Reserved:         { label: 'มีผู้จองแล้ว',     cls: 'st-reserved' },
+  'Pending Payment':{ label: 'รอชำระเงิน',      cls: 'st-pending' },
+  Shipping:         { label: 'กำลังจัดส่ง',      cls: 'st-shipping' },
+  Sold:             { label: 'ขายแล้ว',          cls: 'st-sold' },
+  Cancelled:        { label: 'คำสั่งซื้อยกเลิก', cls: 'st-cancelled' }
+};
+// สถานะที่เปลี่ยนต่อได้จากสถานะปัจจุบัน
+const FLOW = {
+  Ready:            ['Reserved', 'Cancelled'],
+  Reserved:         ['Pending Payment', 'Ready', 'Cancelled'],
+  'Pending Payment':['Shipping', 'Cancelled'],
+  Shipping:         ['Sold', 'Cancelled'],
+  Sold:             [],
+  Cancelled:        ['Ready']
+};
+const BTN = {
+  Ready: 'btn-outline-success', Reserved: 'btn-outline-warning',
+  'Pending Payment': 'btn-outline-primary', Shipping: 'btn-outline-info',
+  Sold: 'btn-outline-secondary', Cancelled: 'btn-outline-danger'
+};
+
+/* ===== 3) State ===== */
+let sellerId = new URLSearchParams(location.search).get('sellerId') || localStorage.getItem('sellerId') || '';
+let products = [], orders = [];
+let unsubProducts = null, unsubOrders = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtPrice = n => Number(n || 0).toLocaleString('th-TH') + ' บาท';
+const badge = st => `<span class="badge-status ${(STATUS[st]||{}).cls || 'st-sold'}">${esc((STATUS[st]||{}).label || st)}</span>`;
+
+function toast(msg) {
+  $('toastMsg').textContent = msg;
+  bootstrap.Toast.getOrCreateInstance($('toast'), { delay: 2500 }).show();
+}
+function showError(e) {
+  console.error(e);
+  $('alertBox').innerHTML = `<div class="alert alert-danger alert-dismissible">เกิดข้อผิดพลาด: ${esc(e.message || e)}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="ปิด"></button></div>`;
+}
+
+/* ===== 4) Listeners ===== */
+function subscribe() {
+  if (unsubProducts) unsubProducts();
+  if (unsubOrders) unsubOrders();
+  if (!sellerId) return;
+
+  // ไม่ใช้ orderBy ใน query เพื่อไม่ต้องสร้าง composite index — เรียงฝั่ง client
+  unsubProducts = db.collection('products').where('sellerId', '==', sellerId)
+    .onSnapshot(snap => {
+      products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderProducts();
+    }, showError);
+
+  unsubOrders = db.collection('orders').where('sellerId', '==', sellerId)
+    .onSnapshot(snap => {
+      orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderOrders();
+    }, showError);
+}
+
+/* ===== 5) Render ===== */
+const ts = x => (x && x.toMillis ? x.toMillis() : 0);
+
+function renderProducts() {
+  const list = [...products].sort((a, b) => ts(b.createdAt) - ts(a.createdAt));
+  $('cntProducts').textContent = list.length;
+  $('cntReady').textContent = list.filter(p => p.status === 'Ready').length;
+  $('cntSold').textContent = list.filter(p => p.status === 'Sold').length;
+
+  if (!list.length) {
+    $('productList').innerHTML = '<div class="empty">ยังไม่มีสินค้าของผู้ขายรหัสนี้</div>';
+    return;
+  }
+  $('productList').innerHTML = list.map(p => {
+    const next = FLOW[p.status] || [];
+    const btns = next.length
+      ? next.map(s => `<button class="btn btn-sm ${BTN[s]}" data-act="status" data-id="${p.id}" data-to="${s}">${esc(STATUS[s].label)}</button>`).join('')
+      : '<span class="text-muted small">ปิดการขายแล้ว</span>';
+    const img = p.imageUrl
+      ? `<img class="thumb" src="${esc(p.imageUrl)}" alt="" loading="lazy">`
+      : '<div class="thumb"></div>';
+    return `<div class="product-row">${img}
+      <div class="product-body">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="product-name">${esc(p.name)}</div>${badge(p.status)}
+        </div>
+        <div class="text-muted small">${fmtPrice(p.price)}</div>
+        <div class="actions">${btns}</div>
+      </div></div>`;
+  }).join('');
+}
+
+function renderOrders() {
+  const list = [...orders].sort((a, b) => ts(b.createdAt) - ts(a.createdAt));
+  const waiting = list.filter(o => o.status === 'requested');
+  $('cntRequests').textContent = waiting.length;
+
+  if (!list.length) {
+    $('orderBody').innerHTML = '<tr><td colspan="4" class="empty">ยังไม่มีคำขอซื้อ/จอง</td></tr>';
+    return;
+  }
+  const orderLabel = { requested: ['รอยืนยัน', 'st-reserved'], confirmed: ['ยืนยันแล้ว', 'st-ready'], rejected: ['ปฏิเสธแล้ว', 'st-cancelled'] };
+  $('orderBody').innerHTML = list.map(o => {
+    const [txt, cls] = orderLabel[o.status] || [o.status, 'st-sold'];
+    const actions = o.status === 'requested'
+      ? `<div class="d-flex flex-column flex-sm-row gap-1 justify-content-end">
+           <button class="btn btn-sm btn-green" data-act="confirm" data-id="${o.id}">ยืนยันคำสั่งซื้อ</button>
+           <button class="btn btn-sm btn-outline-danger" data-act="reject" data-id="${o.id}">ปฏิเสธคำสั่งซื้อ</button>
+         </div>`
+      : '<span class="text-muted small">—</span>';
+    return `<tr>
+      <td class="fw-medium">${esc(o.productName || o.productId)}</td>
+      <td>${esc(o.buyerName || o.buyerId || '-')}</td>
+      <td><span class="badge-status ${cls}">${txt}</span></td>
+      <td class="text-end">${actions}</td></tr>`;
+  }).join('');
+}
+
+/* ===== 6) Actions ===== */
+async function changeProductStatus(id, to) {
+  const p = products.find(x => x.id === id);
+  if (!p || !(FLOW[p.status] || []).includes(to)) return;
+  await db.collection('products').doc(id).update({
+    status: to,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  toast(`เปลี่ยนสถานะเป็น "${STATUS[to].label}" แล้ว`);
+}
+
+async function decideOrder(orderId, confirm) {
+  const o = orders.find(x => x.id === orderId);
+  if (!o) return;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const batch = db.batch();
+  batch.update(db.collection('orders').doc(orderId), { status: confirm ? 'confirmed' : 'rejected', updatedAt: now });
+  // ยืนยัน → สินค้าเป็น Pending Payment, ปฏิเสธ → กลับเป็น Ready
+  batch.update(db.collection('products').doc(o.productId), { status: confirm ? 'Pending Payment' : 'Ready', updatedAt: now });
+  await batch.commit();
+  toast(confirm ? 'ยืนยันคำสั่งซื้อแล้ว รอผู้ซื้อชำระเงิน' : 'ปฏิเสธคำสั่งซื้อแล้ว สินค้ากลับมาพร้อมขาย');
+}
+
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  btn.disabled = true;
+  try {
+    const { act, id, to } = btn.dataset;
+    if (act === 'status') await changeProductStatus(id, to);
+    if (act === 'confirm') await decideOrder(id, true);
+    if (act === 'reject') await decideOrder(id, false);
+  } catch (err) { showError(err); btn.disabled = false; }
+});
+
+$('sellerForm').addEventListener('submit', e => {
+  e.preventDefault();
+  sellerId = $('sellerInput').value.trim();
+  localStorage.setItem('sellerId', sellerId);
+  subscribe();
+});
+
+$('sellerInput').value = sellerId;
+subscribe();
+</script>
+</body>
+</html>
