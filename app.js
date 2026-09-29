@@ -1,12 +1,21 @@
 // ==========================================
-// 1. ตั้งค่า ImgBB API Key
+// 1. ตั้งค่า ImgBB และ รหัสหลัก (Prefix)
 // ==========================================
-const IMGBB_API_KEY = '51a07553119e1552ace83af8297da074';
+const IMGBB_API_KEY = 'fb241941a3033065ba37a71d85066bc7';
+const ID_PREFIX = '169204140'; // รหัสหลัก (รวมกับ 3 ตัวหลัง เช่น 169204140001)
 
-// ฟังก์ชันอัปโหลดรูปภาพขึ้น ImgBB
+// แปลงรหัส 3 ตัวหลังให้เป็น Email สำหรับ Firebase Auth
+function convertCodeToEmail(threeDigits) {
+  const fullCode = ID_PREFIX + String(threeDigits).padStart(3, '0');
+  return {
+    fullCode: fullCode,
+    email: `${fullCode}@faculty.local`
+  };
+}
+
+// อัปโหลดรูปภาพขึ้น ImgBB
 async function uploadImageToImgBB(imageFile) {
   if (!imageFile) return '';
-  
   const formData = new FormData();
   formData.append('image', imageFile);
 
@@ -17,128 +26,113 @@ async function uploadImageToImgBB(imageFile) {
 
   const data = await response.json();
   if (data.success) {
-    return data.data.url; // คืนค่าเป็น Link รูปภาพจริง
+    return data.data.url;
   } else {
-    throw new Error('อัปโหลดรูปภาพไม่สำเร็จ: ' + (data.error?.message || ''));
+    throw new Error('อัปโหลดรูปภาพไม่สำเร็จ');
   }
 }
 
 // ==========================================
-// 2. ระบบยืนยันตัวตน (Authentication & Profile)
+// 2. ระบบ Login / Register & เเยกสิทธิ์ Admin/User
 // ==========================================
 
-// สมัครสมาชิก + บันทึกข้อมูลโปรไฟล์และคอนแทกต์
-async function registerUser(email, password, displayName, contactInfo) {
+// เข้าสู่ระบบด้วยรหัส 3 ตัวหลัง + Password
+async function loginUser(threeDigits, password) {
+  if (String(threeDigits).trim().length !== 3) {
+    alert('กรุณากรอกรหัสประจำตัว 3 ตัวหลังให้ถูกต้อง (เช่น 001)');
+    return;
+  }
+
+  const { email } = convertCodeToEmail(threeDigits.trim());
+
+  try {
+    const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+    const uid = userCredential.user.uid;
+
+    // ดึงข้อมูล Role จาก Firestore เพื่อเปลี่ยนหน้าอัตโนมัติ
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      alert(`เข้าสู่ระบบสำเร็จ! สวัสดีคุณ ${userData.displayName || userData.studentId}`);
+
+      // หากเป็น Admin ให้เด้งไปหน้า admin.html ทันที
+      if (userData.role === 'admin') {
+        window.location.href = 'admin.html';
+      } else {
+        window.location.href = 'index.html';
+      }
+    } else {
+      window.location.href = 'index.html';
+    }
+  } catch (error) {
+    alert('รหัสประจำตัวหรือรหัสผ่านไม่ถูกต้อง');
+  }
+}
+
+// สมัครสมาชิก (ระบุรหัส 3 ตัวหลัง, รหัสผ่าน, ชื่อ, คอนแทกต์, สิทธิ์)
+async function registerUser(threeDigits, password, displayName, contactInfo, role = 'user') {
+  if (String(threeDigits).trim().length !== 3) {
+    alert('กรุณากรอกรหัสประจำตัว 3 ตัวหลังให้ถูกต้อง (เช่น 001)');
+    return;
+  }
+
+  const { fullCode, email } = convertCodeToEmail(threeDigits.trim());
+
   try {
     const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
     const user = userCredential.user;
 
-    // บันทึกโปรไฟล์ลง Firestore
     await db.collection('users').doc(user.uid).set({
       uid: user.uid,
+      studentId: fullCode,      // 169204140001
+      shortId: threeDigits,     // 001
       displayName: displayName,
       email: email,
-      contactInfo: contactInfo, // เช่น Line ID / เบอร์โทรศัพท์
+      contactInfo: contactInfo,
+      role: role,               // 'user' หรือ 'admin'
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    alert('สมัครสมาชิกสำเร็จ!');
+    alert(`สมัครสมาชิกสำเร็จ! รหัสผู้ใช้ของคุณคือ: ${fullCode}`);
+    
+    if (role === 'admin') {
+      window.location.href = 'admin.html';
+    } else {
+      window.location.href = 'index.html';
+    }
   } catch (error) {
-    alert('เกิดข้อผิดพลาดในการสมัครสมาชิก: ' + error.message);
-  }
-}
-
-// เข้าสู่ระบบ
-async function loginUser(email, password) {
-  try {
-    await firebase.auth().signInWithEmailAndPassword(email, password);
-    alert('เข้าสู่ระบบสำเร็จ!');
-  } catch (error) {
-    alert('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+    alert('เกิดข้อผิดพลาดในการสมัคร: ' + error.message);
   }
 }
 
 // ออกจากระบบ
 function logoutUser() {
-  firebase.auth().signOut().then(() => alert('ออกจากระบบเรียบร้อย'));
+  firebase.auth().signOut().then(() => {
+    alert('ออกจากระบบเรียบร้อย');
+    window.location.href = 'index.html';
+  });
 }
 
-// ตรวจสอบสถานะ User ปัจจุบัน
+// ตรวจสอบสิทธิ์ผู้ใช้และควบคุมการเข้าถึงหน้าเว็บ (Role Guard)
 firebase.auth().onAuthStateChanged(async (user) => {
+  const isAdminPage = window.location.pathname.includes('admin.html');
+
   if (user) {
     const userDoc = await db.collection('users').doc(user.uid).get();
     if (userDoc.exists) {
-      const profile = userDoc.data();
-      console.log('ผู้ใช้ปัจจุบัน:', profile.displayName, '| Contact:', profile.contactInfo);
-      // นำข้อมูลโปรไฟล์ไปแสดงบน UI หน้าเว็บได้ตรงนี้
+      const userData = userDoc.data();
+      
+      // ถ้าอยู่หน้า admin แต่ไม่ใช่ admin ให้ดีดออกไปหน้า index.html
+      if (isAdminPage && userData.role !== 'admin') {
+        alert('คุณไม่มีสิทธิ์เข้าถึงหน้า Admin');
+        window.location.href = 'index.html';
+      }
     }
   } else {
-    console.log('ยังไม่ได้เข้าสู่ระบบ');
+    // ถ้ายังไม่ได้ Login แล้วพยายามเข้าหน้า admin.html
+    if (isAdminPage) {
+      alert('กรุณาเข้าสู่ระบบด้วยบัญชี Admin');
+      window.location.href = 'index.html';
+    }
   }
 });
-
-// ==========================================
-// 3. ระบบโพสต์ขายสินค้า (อัปโหลดรูป + เพิ่มคอนแทกต์)
-// ==========================================
-
-async function createProductPost(title, price, category, contactInfo, imageFile) {
-  const currentUser = firebase.auth().currentUser;
-
-  if (!currentUser) {
-    alert('กรุณาเข้าสู่ระบบก่อนทำการโพสต์ขายสินค้า');
-    return;
-  }
-
-  try {
-    alert('กำลังอัปโหลดรูปและบันทึกข้อมูล...');
-
-    // 1. อัปโหลดรูปไป ImgBB
-    let imageUrl = '';
-    if (imageFile) {
-      imageUrl = await uploadImageToImgBB(imageFile);
-    }
-
-    // 2. บันทึกข้อมูลลง Firestore
-    await db.collection('products').add({
-      title: title,
-      price: Number(price),
-      category: category,
-      contactInfo: contactInfo, // ช่องทางติดต่อสำหรับสินค้านี้
-      imageUrl: imageUrl,       // ลิงก์รูปภาพจาก ImgBB
-      sellerId: currentUser.uid,
-      sellerEmail: currentUser.email,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    alert('ลงประกาศขายสินค้าเรียบร้อยแล้ว!');
-  } catch (error) {
-    alert('เกิดข้อผิดพลาด: ' + error.message);
-  }
-}
-
-// ==========================================
-// 4. ดึงรายการสินค้ามาแสดงบนหน้าเว็บ
-// ==========================================
-
-function loadProducts(containerId) {
-  db.collection('products').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    container.innerHTML = ''; // ล้างข้อมูลเก่า
-    snapshot.forEach((doc) => {
-      const item = doc.data();
-      
-      const card = `
-        <div class="product-card" style="border: 1px solid #ccc; padding: 10px; margin: 10px; border-radius: 8px;">
-          ${item.imageUrl ? `<img src="${item.imageUrl}" style="width:100%; max-height:200px; object-fit:cover;">` : ''}
-          <h3>${item.title}</h3>
-          <p>ราคา: ${item.price} บาท</p>
-          <p>หมวดหมู่: ${item.category}</p>
-          <p><strong>ช่องทางติดต่อผู้ขาย:</strong> ${item.contactInfo || 'ไม่มีข้อมูลติดต่อ'}</p>
-        </div>
-      `;
-      container.innerHTML += card;
-    });
-  });
-}
