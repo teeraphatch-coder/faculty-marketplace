@@ -1,172 +1,144 @@
-// js/app.js
-let rawProducts = [];
+// ==========================================
+// 1. ตั้งค่า ImgBB API Key
+// ==========================================
+const IMGBB_API_KEY = 'fb241941a3033065ba37a71d85066bc7';
 
-// Seed Mock Data อัตโนมัติหากยังไม่มีข้อมูลใน Firestore
-async function seedInitialData() {
-    const snapshot = await db.collection("products").get();
-    if (snapshot.empty) {
-        const sampleData = [
-            {
-                title: "หนังสือ Calculus II มือสองสภาพดี",
-                price: 180,
-                category: "หนังสือ/ตำรา",
-                condition: "มือสองสภาพดีมาก",
-                location: "ใต้ตึกเพียรวิจิตร",
-                imageUrl: "https://picsum.photos/seed/book/400/300",
-                description: "ไม่มีรอยไฮไลท์ มีเฉลยแบบฝึกหัดท้ายบทครบถ้วน",
-                status: "ready", // พร้อมขาย
-                statusLabel: "พร้อมขาย",
-                sellerName: "สมชาย สายเรียน",
-                createdAt: new Date().toISOString()
-            },
-            {
-                title: "หูฟัง Bluetooth เสียงดี แบตอึด",
-                price: 350,
-                category: "เครื่องใช้ไฟฟ้า",
-                condition: "มือสองสภาพปานกลาง",
-                location: "โรงอาหารกลาง",
-                imageUrl: "https://picsum.photos/seed/headphone/400/300",
-                description: "ใช้งานปกติ แบตเตอรี่อยู่อย่างน้อย 4 ชั่วโมง",
-                status: "reserved", // มีผู้จองแล้ว
-                statusLabel: "มีผู้จองแล้ว",
-                sellerName: "สมหญิง จริงใจ",
-                createdAt: new Date().toISOString()
-            }
-        ];
-        for (let item of sampleData) {
-            await db.collection("products").add(item);
-        }
-        console.log("Seed complete");
-    }
+// ฟังก์ชันอัปโหลดรูปภาพขึ้น ImgBB
+async function uploadImageToImgBB(imageFile) {
+  if (!imageFile) return '';git push -u origin main
+  
+  const formData = new FormData();
+  formData.append('image', imageFile);
+
+  const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+    method: 'POST',
+    body: formData
+  });
+
+  const data = await response.json();
+  if (data.success) {
+    return data.data.url; // คืนค่าเป็น Link รูปภาพจริง
+  } else {
+    throw new Error('อัปโหลดรูปภาพไม่สำเร็จ: ' + (data.error?.message || ''));
+  }
 }
 
-// Fetch & Render Products
-function loadProducts() {
-    db.collection("products").onSnapshot((snapshot) => {
-        rawProducts = [];
-        snapshot.forEach((doc) => {
-            rawProducts.push({ id: doc.id, ...doc.data() });
-        });
-        renderProducts(rawProducts);
+// ==========================================
+// 2. ระบบยืนยันตัวตน (Authentication & Profile)
+// ==========================================
+
+// สมัครสมาชิก + บันทึกข้อมูลโปรไฟล์และคอนแทกต์
+async function registerUser(email, password, displayName, contactInfo) {
+  try {
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    const user = userCredential.user;
+
+    // บันทึกโปรไฟล์ลง Firestore
+    await db.collection('users').doc(user.uid).set({
+      uid: user.uid,
+      displayName: displayName,
+      email: email,
+      contactInfo: contactInfo, // เช่น Line ID / เบอร์โทรศัพท์
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
+    alert('สมัครสมาชิกสำเร็จ!');
+  } catch (error) {
+    alert('เกิดข้อผิดพลาดในการสมัครสมาชิก: ' + error.message);
+  }
 }
 
-// Render Status Badge ตามไดอะแกรมระบบ
-function getStatusBadge(status) {
-    switch (status) {
-        case 'ready':
-            return `<span class="badge bg-success badge-status"><i class="fa-solid fa-check me-1"></i>พร้อมขาย</span>`;
-        case 'reserved':
-            return `<span class="badge bg-warning text-dark badge-status"><i class="fa-solid fa-clock me-1"></i>มีผู้จองแล้ว</span>`;
-        case 'pending_payment':
-            return `<span class="badge bg-info text-dark badge-status"><i class="fa-solid fa-credit-card me-1"></i>รอชำระเงิน</span>`;
-        case 'shipping':
-            return `<span class="badge bg-primary badge-status"><i class="fa-solid fa-truck me-1"></i>กำลังจัดส่ง</span>`;
-        case 'sold':
-            return `<span class="badge bg-secondary badge-status"><i class="fa-solid fa-box-archive me-1"></i>ขายแล้ว</span>`;
-        default:
-            return `<span class="badge bg-dark badge-status">ไม่ระบุ</span>`;
+// เข้าสู่ระบบ
+async function loginUser(email, password) {
+  try {
+    await firebase.auth().signInWithEmailAndPassword(email, password);
+    alert('เข้าสู่ระบบสำเร็จ!');
+  } catch (error) {
+    alert('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+  }
+}
+
+// ออกจากระบบ
+function logoutUser() {
+  firebase.auth().signOut().then(() => alert('ออกจากระบบเรียบร้อย'));
+}
+
+// ตรวจสอบสถานะ User ปัจจุบัน
+firebase.auth().onAuthStateChanged(async (user) => {
+  if (user) {
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      const profile = userDoc.data();
+      console.log('ผู้ใช้ปัจจุบัน:', profile.displayName, '| Contact:', profile.contactInfo);
+      // นำข้อมูลโปรไฟล์ไปแสดงบน UI หน้าเว็บได้ตรงนี้
     }
-}
-
-function renderProducts(items) {
-    const grid = document.getElementById("productGrid");
-    document.getElementById("itemCount").innerText = `พบทั้งหมด ${items.length} รายการ`;
-    grid.innerHTML = "";
-
-    if (items.length === 0) {
-        grid.innerHTML = `<div class="col-12 text-center text-muted py-5">ไม่พบรายการสินค้า</div>`;
-        return;
-    }
-
-    items.forEach((p) => {
-        const isAvailable = p.status === 'ready';
-        const cardHtml = `
-            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                <div class="card product-card h-100 shadow-sm">
-                    ${getStatusBadge(p.status)}
-                    <img src="${p.imageUrl}" class="card-img-top" style="height:180px; object-fit:cover;" alt="${p.title}">
-                    <div class="card-body d-flex flex-column">
-                        <span class="badge bg-light text-primary w-fit mb-2">${p.category}</span>
-                        <h6 class="card-title fw-bold text-truncate">${p.title}</h6>
-                        <p class="text-success fw-bold fs-5 mb-1">${Number(p.price).toLocaleString()} บาท</p>
-                        <p class="text-muted small mb-2"><i class="fa-solid fa-location-dot me-1"></i>${p.location || 'นัดรับภายในคณะ'}</p>
-                        <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
-                            <span class="small text-muted"><i class="fa-solid fa-user me-1"></i>${p.sellerName || 'นิสิตผู้ขาย'}</span>
-                            <button class="btn btn-sm ${isAvailable ? 'btn-outline-primary' : 'btn-light disabled'}" onclick="createOrder('${p.id}', '${p.title}')">
-                                ${isAvailable ? 'ส่งคำขอซื้อ' : 'ขายแล้ว/ติดจอง'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        grid.innerHTML += cardHtml;
-    });
-}
-
-// สร้างคำสั่งซื้อ/จองสินค้า
-async function createOrder(productId, title) {
-    if (!confirm(`ยืนยันส่งคำขอซื้อ/จองสินค้า: ${title} ?`)) return;
-
-    try {
-        // บันทึกคำสั่งซื้อลง Firestore[cite: 1]
-        await db.collection("orders").add({
-            productId: productId,
-            productTitle: title,
-            buyerName: "ผู้ซื้อทดสอบ (นิสิต)",
-            status: "pending",
-            createdAt: new Date().toISOString()
-        });
-
-        // อัปเดตสถานะสินค้าเป็น "มีผู้จองแล้ว"[cite: 1]
-        await db.collection("products").doc(productId).update({
-            status: "reserved",
-            statusLabel: "มีผู้จองแล้ว"
-        });
-
-        alert("ส่งคำขอจองสำเร็จ! ระบบแจ้งเตือนไปยังผู้ขายแล้ว");
-    } catch (e) {
-        alert("เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ: " + e.message);
-    }
-}
-
-// เพิ่มสินค้าใหม่
-document.getElementById("formAddProduct")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const newProduct = {
-        title: document.getElementById("pTitle").value,
-        price: parseFloat(document.getElementById("pPrice").value),
-        category: document.getElementById("pCategory").value,
-        condition: document.getElementById("pCondition").value,
-        location: document.getElementById("pLocation").value,
-        imageUrl: document.getElementById("pImageUrl").value || "https://picsum.photos/400/300",
-        description: document.getElementById("pDescription").value,
-        status: "ready", // พร้อมขาย[cite: 1]
-        statusLabel: "พร้อมขาย",
-        sellerName: "ฉัน (ผู้ขายปัจจุบัน)",
-        createdAt: new Date().toISOString()
-    };
-
-    await db.collection("products").add(newProduct);
-    bootstrap.Modal.getInstance(document.getElementById("modalAddProduct")).hide();
-    document.getElementById("formAddProduct").reset();
-    alert("ลงขายสินค้าสำเร็จ!");
+  } else {
+    console.log('ยังไม่ได้เข้าสู่ระบบ');
+  }
 });
 
-// กรองหมวดหมู่ & ค้นหา
-function filterCategory(cat) {
-    if (cat === 'all') renderProducts(rawProducts);
-    else renderProducts(rawProducts.filter(p => p.category === cat));
+// ==========================================
+// 3. ระบบโพสต์ขายสินค้า (อัปโหลดรูป + เพิ่มคอนแทกต์)
+// ==========================================
+
+async function createProductPost(title, price, category, contactInfo, imageFile) {
+  const currentUser = firebase.auth().currentUser;
+
+  if (!currentUser) {
+    alert('กรุณาเข้าสู่ระบบก่อนทำการโพสต์ขายสินค้า');
+    return;
+  }
+
+  try {
+    alert('กำลังอัปโหลดรูปและบันทึกข้อมูล...');
+
+    // 1. อัปโหลดรูปไป ImgBB
+    let imageUrl = '';
+    if (imageFile) {
+      imageUrl = await uploadImageToImgBB(imageFile);
+    }
+
+    // 2. บันทึกข้อมูลลง Firestore
+    await db.collection('products').add({
+      title: title,
+      price: Number(price),
+      category: category,
+      contactInfo: contactInfo, // ช่องทางติดต่อสำหรับสินค้านี้
+      imageUrl: imageUrl,       // ลิงก์รูปภาพจาก ImgBB
+      sellerId: currentUser.uid,
+      sellerEmail: currentUser.email,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert('ลงประกาศขายสินค้าเรียบร้อยแล้ว!');
+  } catch (error) {
+    alert('เกิดข้อผิดพลาด: ' + error.message);
+  }
 }
 
-function searchProducts() {
-    const term = document.getElementById("searchInput").value.toLowerCase();
-    renderProducts(rawProducts.filter(p => p.title.toLowerCase().includes(term) || p.location?.toLowerCase().includes(term)));
-}
+// ==========================================
+// 4. ดึงรายการสินค้ามาแสดงบนหน้าเว็บ
+// ==========================================
 
-// Initial Run
-window.onload = async () => {
-    await seedInitialData();
-    loadProducts();
-};
+function loadProducts(containerId) {
+  db.collection('products').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = ''; // ล้างข้อมูลเก่า
+    snapshot.forEach((doc) => {
+      const item = doc.data();
+      
+      const card = `
+        <div class="product-card" style="border: 1px solid #ccc; padding: 10px; margin: 10px; border-radius: 8px;">
+          ${item.imageUrl ? `<img src="${item.imageUrl}" style="width:100%; max-height:200px; object-fit:cover;">` : ''}
+          <h3>${item.title}</h3>
+          <p>ราคา: ${item.price} บาท</p>
+          <p>หมวดหมู่: ${item.category}</p>
+          <p><strong>ช่องทางติดต่อผู้ขาย:</strong> ${item.contactInfo || 'ไม่มีข้อมูลติดต่อ'}</p>
+        </div>
+      `;
+      container.innerHTML += card;
+    });
+  });
+}
