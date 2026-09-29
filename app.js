@@ -1,11 +1,11 @@
 // ==========================================
 // 1. ตั้งค่า ImgBB API Key
 // ==========================================
-const IMGBB_API_KEY = 'fb241941a3033065ba37a71d85066bc7';
+const IMGBB_API_KEY = '51a07553119e1552ace83af8297da074';
 
 // ฟังก์ชันอัปโหลดรูปภาพขึ้น ImgBB
 async function uploadImageToImgBB(imageFile) {
-  if (!imageFile) return '';git push -u origin main
+  if (!imageFile) return '';
   
   const formData = new FormData();
   formData.append('image', imageFile);
