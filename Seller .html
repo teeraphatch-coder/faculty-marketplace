@@ -42,10 +42,7 @@
   <div class="container d-flex justify-content-between">
     <a class="navbar-brand" href="index.html">ตลาดมือสองคณะ · ผู้ขาย</a>
     <div class="d-flex gap-2">
-      <form class="d-flex gap-2" id="sellerForm">
-        <input id="sellerInput" class="form-control form-control-sm" placeholder="รหัสผู้ขาย (sellerId)">
-        <button class="btn btn-sm btn-light" type="submit">ตกลง</button>
-      </form>
+      <span id="whoami" class="text-white small align-self-center"></span>
       <button class="btn btn-sm btn-outline-light ms-2" onclick="logoutUser()">ออกจากระบบ</button>
     </div>
   </div>
@@ -65,7 +62,7 @@
     <section class="col-12 col-lg-7">
       <div class="panel">
         <div class="panel-head"><h2>สินค้าของฉัน</h2></div>
-        <div id="productList"><div class="empty">กรอกรหัสผู้ขายด้านบนเพื่อดูสินค้า</div></div>
+        <div id="productList"><div class="empty">กำลังโหลดสินค้าของคุณ...</div></div>
       </div>
     </section>
 
@@ -121,7 +118,7 @@ const BTN = {
   Sold: 'btn-outline-secondary', Cancelled: 'btn-outline-danger'
 };
 
-let sellerId = new URLSearchParams(location.search).get('sellerId') || localStorage.getItem('sellerId') || '';
+let sellerId = '';   // = uid ของผู้ใช้ที่ล็อกอิน (ตั้งค่าหลัง authReady)
 let products = [], orders = [];
 let unsubProducts = null, unsubOrders = null;
 
@@ -215,10 +212,14 @@ function renderOrders() {
 async function changeProductStatus(id, to) {
   const p = products.find(x => x.id === id);
   if (!p || !(FLOW[p.status] || []).includes(to)) return;
-  await db.collection('products').doc(id).update({
-    status: to,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const batch = db.batch();
+  batch.update(db.collection('products').doc(id), { status: to, updatedAt: now });
+  if (to === 'Sold') {   // ปิดการขาย → คำสั่งซื้อที่ยืนยันแล้วของสินค้านี้เป็น completed (นับเป็นยอดขายในหน้า Admin)
+    orders.filter(o => o.productId === id && o.status === 'confirmed')
+      .forEach(o => batch.update(db.collection('orders').doc(o.id), { status: 'completed', updatedAt: now }));
+  }
+  await batch.commit();
   toast(`เปลี่ยนสถานะเป็น "${STATUS[to].label}" แล้ว`);
 }
 
@@ -245,15 +246,11 @@ document.addEventListener('click', async e => {
   } catch (err) { showError(err); btn.disabled = false; }
 });
 
-$('sellerForm').addEventListener('submit', e => {
-  e.preventDefault();
-  sellerId = $('sellerInput').value.trim();
-  localStorage.setItem('sellerId', sellerId);
+authReady.then(({ user, profile }) => {
+  sellerId = user.uid;
+  $('whoami').textContent = profile.displayName || user.email;
   subscribe();
 });
-
-$('sellerInput').value = sellerId;
-subscribe();
 </script>
 </body>
 </html>
