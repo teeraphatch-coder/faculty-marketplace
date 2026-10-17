@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ผู้ดูแลระบบ | ตลาดสินค้ามือสองคณะ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --green:#2e9e6b; --green-dark:#1f7a51; --blue:#1e5fa8; --blue-dark:#164a85; --gray-bg:#f1f4f6; --ink:#1d2a33; --muted:#6b7b86; --line:#dde4e9; }
+  body { font-family:'Noto Sans Thai',system-ui,sans-serif; background:var(--gray-bg); color:var(--ink); }
+  .app-nav { background:linear-gradient(90deg,var(--green),var(--blue)); }
+  .app-nav .navbar-brand { font-weight:700; color:#fff; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; }
+  .panel-head { padding:1rem 1.25rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
+  .panel-head h2 { font-size:1.1rem; font-weight:700; margin:0; }
+  .panel-body { padding:1rem 1.25rem; }
+  .stat { background:#fff; border:1px solid var(--line); border-left:4px solid var(--green); border-radius:10px; padding:1rem 1.1rem; height:100%; }
+  .stat.blue { border-left-color:var(--blue); }
+  .stat .n { font-size:1.7rem; font-weight:700; line-height:1.15; }
+  .stat .l { color:var(--muted); font-size:.85rem; }
+  .btn-green { background:var(--green); border-color:var(--green); color:#fff; }
+  .btn-green:hover,.btn-green:focus { background:var(--green-dark); border-color:var(--green-dark); color:#fff; }
+  .btn-blue { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .btn-blue:hover,.btn-blue:focus { background:var(--blue-dark); border-color:var(--blue-dark); color:#fff; }
+  .chip { display:inline-block; font-weight:500; font-size:.8rem; padding:.3em .7em; border-radius:999px; }
+  .c-pending { background:#fff1d6; color:#8a5a00; }
+  .c-approved { background:#dff3e8; color:#1f7a51; }
+  .c-hidden { background:#dfe4e8; color:#3d4b55; }
+  .chart-box { position:relative; height:280px; }
+  .empty { padding:2rem 1rem; text-align:center; color:var(--muted); }
+  .name-cell { min-width:160px; overflow-wrap:anywhere; }
+</style>
+</head>
+<body>
+
+<nav class="navbar app-nav">
+  <div class="container d-flex justify-content-between">
+    <a class="navbar-brand" href="index.html">ตลาดมือสองคณะ · ผู้ดูแลระบบ</a>
+    <button class="btn btn-sm btn-outline-light" onclick="logoutUser()">ออกจากระบบ</button>
+  </div>
+</nav>
+
+<main class="container py-4">
+  <div id="alertBox"></div>
+
+  <!-- 1. Dashboard cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="cMembers">0</div><div class="l">สมาชิกทั้งหมด</div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="cListed">0</div><div class="l">สินค้าที่ลงขายอยู่</div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat blue"><div class="n" id="cOrders">0</div><div class="l">คำสั่งซื้อเดือนนี้</div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat blue"><div class="n" id="cSales">0</div><div class="l">ยอดขายรวม (บาท)</div></div></div>
+  </div>
+
+  <!-- 2. Charts -->
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-7">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>ยอดขายตามช่วงวันที่</h2>
+          <div class="d-flex gap-2 align-items-center">
+            <input type="date" id="dFrom" class="form-control form-control-sm">
+            <span class="text-muted">–</span>
+            <input type="date" id="dTo" class="form-control form-control-sm">
+          </div>
+        </div>
+        <div class="panel-body"><div class="chart-box"><canvas id="salesChart"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="panel">
+        <div class="panel-head"><h2>สัดส่วนประเภทสินค้าขายดี</h2></div>
+        <div class="panel-body"><div class="chart-box"><canvas id="catChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 + 4. Moderation table + CSV -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>จัดการประกาศสินค้า</h2>
+      <div class="d-flex gap-2 flex-wrap">
+        <select id="fStatus" class="form-select form-select-sm">
+          <option value="">ทุกสถานะ</option>
+          <option value="pending">รออนุมัติ</option>
+          <option value="approved">อนุมัติแล้ว</option>
+          <option value="hidden">ซ่อนอยู่</option>
+        </select>
+        <input id="fSearch" class="form-control form-control-sm" placeholder="ค้นหาชื่อสินค้า/ผู้ขาย">
+        <button class="btn btn-sm btn-blue" id="btnCsv">Export CSV</button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>สินค้า</th><th>ผู้ขาย</th><th>ประเภท</th><th class="text-end">ราคา</th><th>สถานะประกาศ</th><th class="text-end">จัดการ</th></tr>
+        </thead>
+        <tbody id="pBody"><tr><td colspan="6" class="empty">กำลังโหลดข้อมูล...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="toast" class="toast text-bg-dark" role="status"><div class="toast-body" id="toastMsg"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// js/firebase-config.js  — โหลดก่อน js/app.js ในทุกหน้า
+const firebaseConfig = {
+  apiKey: "AIzaSyABG1MuczTh6KlJxSaUvFwTszCMVNvaA3g",
+  authDomain: "faculty-marketplac.firebaseapp.com",
+  databaseURL: "https://faculty-marketplac-default-rtdb.firebaseio.com",
+  projectId: "faculty-marketplac",
+  storageBucket: "faculty-marketplac.firebasestorage.app",
+  messagingSenderId: "110077750433",
+  appId: "1:110077750433:web:148d115889410c13881468",
+  measurementId: "G-2Z8Q49V5EX"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+</script>
+<script>
+// ==========================================================
+// js/app.js — ตัวกลางของระบบ (ล็อกอิน/สมัคร/สิทธิ์/อัปโหลดรูป)
+// (ฝังอยู่ในทุกหน้าต่อจากส่วน config)
+// หน้าอื่นรอผู้ใช้พร้อมด้วย:  authReady.then(({ user, profile }) => { ... })
+// ==========================================================
+const IMGBB_API_KEY = 'fb241941a3033065ba37a71d85066bc7';
+const AUTO_APPROVE = true;         // true = ประกาศใหม่แสดงทันที | false = รอแอดมินอนุมัติก่อน
+
+const CURRENT_PAGE = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+const IS_AUTH_PAGE = CURRENT_PAGE.startsWith('auth');
+const IS_ADMIN_PAGE = CURRENT_PAGE.startsWith('admin');
+
+// ซ่อนหน้าไว้จนกว่าจะยืนยันตัวตนเสร็จ (กันเนื้อหาวาบก่อนเด้งไปหน้าล็อกอิน)
+if (!IS_AUTH_PAGE) document.documentElement.style.visibility = 'hidden';
+const showPage = () => { document.documentElement.style.visibility = ''; };
+
+let currentUser = null, currentProfile = null;
+let authBusy = false;              // กัน redirect อัตโนมัติระหว่างกำลังล็อกอิน/สมัคร
+let _resolveAuth;
+const authReady = new Promise(r => { _resolveAuth = r; });
+
+// ---------- อัปโหลดรูปขึ้น ImgBB ----------
+async function uploadImageToImgBB(imageFile) {
+  if (!imageFile) return '';
+  if (imageFile.size > 5 * 1024 * 1024) throw new Error('รูปต้องมีขนาดไม่เกิน 5 MB');
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+  const data = await res.json();
+  if (!data.success) throw new Error('อัปโหลดรูปภาพไม่สำเร็จ');
+  return data.data.url;
+}
+
+// ---------- ข้อความ error ภาษาไทย ----------
+function authErrorText(e) {
+  const m = {
+    'auth/operation-not-allowed': 'ยังไม่ได้เปิดวิธีล็อกอินนี้ใน Firebase Console (Authentication > Sign-in method)',
+    'auth/unauthorized-domain': 'โดเมนนี้ยังไม่ได้อนุญาต: เพิ่มใน Authentication > Settings > Authorized domains (และห้ามเปิดแบบ file://)',
+    'auth/email-already-in-use': 'อีเมล/รหัสนี้ถูกใช้สมัครแล้ว',
+    'auth/weak-password': 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+    'auth/invalid-email': 'รูปแบบอีเมลหรือรหัสไม่ถูกต้อง',
+    'auth/invalid-credential': 'อีเมล/รหัส หรือรหัสผ่านไม่ถูกต้อง',
+    'auth/user-not-found': 'อีเมล/รหัส หรือรหัสผ่านไม่ถูกต้อง',
+    'auth/wrong-password': 'อีเมล/รหัส หรือรหัสผ่านไม่ถูกต้อง',
+    'auth/invalid-api-key': 'API Key ในส่วน firebaseConfig ไม่ถูกต้อง',
+    'auth/popup-closed-by-user': 'ปิดหน้าต่างล็อกอินก่อนเสร็จสิ้น',
+    'auth/too-many-requests': 'ลองผิดหลายครั้งเกินไป กรุณารอสักครู่',
+    'permission-denied': 'ไม่มีสิทธิ์เข้าถึงฐานข้อมูล ตรวจสอบ Firestore Rules'
+  };
+  return m[e && e.code] || (e && e.message) || String(e);
+}
+
+// ---------- โปรไฟล์ผู้ใช้ใน Firestore: users/{uid} (role = 'user' | 'admin') ----------
+async function ensureProfile(user, extra = {}) {
+  const ref = db.collection('users').doc(user.uid);
+  const snap = await ref.get();
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  if (snap.exists) {                         // ไม่แตะ role เดิม อัปเดตแค่เวลาล็อกอิน
+    await ref.update({ lastLogin: now });
+    return snap.data();
+  }
+  const profile = {
+    uid: user.uid,
+    displayName: extra.displayName || user.displayName || (user.email || '').split('@')[0],
+    email: user.email || '',
+    photoURL: user.photoURL || '',
+    role: 'user',                            // แอดมินตั้งผ่าน Firebase Console เท่านั้น
+    nameSet: false,                          // ยังไม่ได้ตั้งชื่อ → จะถูกถามตอนเข้าระบบครั้งแรก
+    createdAt: now,
+    lastLogin: now
+  };
+  if (extra.year) profile.year = extra.year;
+  if (extra.studentId) profile.studentId = extra.studentId;
+  await ref.set(profile);
+  return profile;
+}
+
+const goByRole = (p) => location.replace(p && p.role === 'admin' ? 'admin.html' : 'index.html');
+
+// ---------- ล็อกอิน / สมัคร / Google / ออกจากระบบ (throw error ให้หน้าเรียกแสดงเอง) ----------
+// เฉพาะผู้ดูแลระบบ (อีเมล/รหัสผ่าน) — ถ้าบัญชีไม่ใช่ admin จะถูกออกจากระบบทันที
+async function adminLogin(email, password) {
+  authBusy = true;
+  try {
+    const c = await auth.signInWithEmailAndPassword(String(email).trim(), password);
+    const p = await ensureProfile(c.user);
+    if (p.role !== 'admin') {
+      await auth.signOut();
+      throw new Error('บัญชีนี้ไม่ใช่ผู้ดูแลระบบ (ผู้ใช้ทั่วไปให้เข้าสู่ระบบด้วย Google)');
+    }
+    goByRole(p);
+  } catch (e) { authBusy = false; throw e; }
+}
+
+async function googleLogin() {
+  authBusy = true;
+  try {
+    const r = await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    goByRole(await ensureProfile(r.user));
+  } catch (e) { authBusy = false; throw e; }
+}
+
+function logoutUser() {
+  const go = () => location.replace('auth.html');
+  auth.signOut().then(go, go);
+}
+
+// ---------- หน้าต่างตั้งชื่อ (บังคับครั้งแรก / แก้ไขภายหลังได้ด้วย changeName ในหน้า index) ----------
+function askProfileName(user, profile, required) {
+  return new Promise((resolve) => {
+    showPage();
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.65);display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Segoe UI",Tahoma,sans-serif';
+    const inp = 'width:100%;box-sizing:border-box;padding:11px;margin:6px 0 14px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;background:#fff;color:#0f172a';
+    wrap.innerHTML = `
+      <form style="background:#fff;color:#0f172a;border-radius:16px;padding:26px;width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+        <h3 style="margin:0 0 6px;font-size:20px">👋 ตั้งชื่อของคุณ</h3>
+        <p style="margin:0 0 16px;color:#64748b;font-size:14px">ชื่อนี้จะแสดงให้ผู้ซื้อ/ผู้ขายเห็น</p>
+        <label style="font-size:14px;font-weight:600">ชื่อที่ใช้แสดง</label>
+        <input id="pf-name" maxlength="40" required style="${inp}">
+        <label style="font-size:14px;font-weight:600">ชั้นปี</label>
+        <select id="pf-year" style="${inp}"><option value="1">ปี 1</option><option value="2">ปี 2</option><option value="3">ปี 3</option><option value="4">ปี 4</option></select>
+        <div id="pf-err" style="color:#dc2626;font-size:13px;min-height:18px"></div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          ${required ? '' : '<button type="button" id="pf-cancel" style="flex:1;padding:12px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;cursor:pointer;font-weight:600">ยกเลิก</button>'}
+          <button type="submit" id="pf-save" style="flex:2;padding:12px;border:0;background:#4f46e5;color:#fff;border-radius:10px;cursor:pointer;font-weight:700">บันทึก</button>
+        </div>
+      </form>`;
+    document.body.appendChild(wrap);
+    const q = (id) => wrap.querySelector(id);
+    q('#pf-name').value = profile.displayName || user.displayName || '';
+    q('#pf-year').value = String(profile.year || 1);
+    q('#pf-name').focus();
+    const cancel = q('#pf-cancel');
+    if (cancel) cancel.onclick = () => { wrap.remove(); resolve(null); };
+
+    q('form').onsubmit = async (e) => {
+      e.preventDefault();
+      const name = q('#pf-name').value.trim();
+      if (name.length < 2) { q('#pf-err').textContent = 'กรุณาใส่ชื่ออย่างน้อย 2 ตัวอักษร'; return; }
+      q('#pf-save').disabled = true;
+      try {
+        const patch = { displayName: name, year: parseInt(q('#pf-year').value, 10), nameSet: true };
+        await db.collection('users').doc(user.uid).update(patch);
+        user.updateProfile({ displayName: name }).catch(() => {});
+        currentProfile = { ...profile, ...patch };
+        wrap.remove();
+        resolve(currentProfile);
+      } catch (err) {
+        q('#pf-err').textContent = authErrorText(err);
+        q('#pf-save').disabled = false;
+      }
+    };
+  });
+}
+
+// ---------- Role Guard ----------
+auth.onAuthStateChanged(async (user) => {
+  if (authBusy) return;
+  if (!user) { if (!IS_AUTH_PAGE) location.replace('auth.html'); return; }
+
+  let profile;
+  try { profile = await ensureProfile(user); }
+  catch (e) {
+    console.error(e);
+    showPage();
+    alert('เชื่อมต่อฐานข้อมูลไม่ได้: ' + authErrorText(e) + '\n(ตรวจสอบว่าสร้าง Firestore Database และตั้ง Rules แล้ว)');
+    return;
+  }
+  if (IS_AUTH_PAGE) return goByRole(profile);
+  if (IS_ADMIN_PAGE && profile.role !== 'admin') {
+    alert('คุณไม่มีสิทธิ์เข้าถึงหน้า Admin');
+    location.replace('index.html');
+    return;
+  }
+  if (!profile.nameSet) profile = await askProfileName(user, profile, true);   // เข้าครั้งแรก: ให้ตั้งชื่อก่อน
+  currentUser = user; currentProfile = profile;
+  showPage();
+  _resolveAuth({ user, profile });
+});
+
+</script>
+
+<script>
+// สถานะ order ที่นับเป็น "ยอดขาย"
+const SALE_STATUSES = ['completed'];   // ขายสำเร็จ (ผู้ขายกด Sold แล้ว)
+const LISTED_STATUSES = ['Ready', 'Reserved', 'Pending Payment'];
+const MOD = { pending:['รออนุมัติ','c-pending'], approved:['อนุมัติแล้ว','c-approved'], hidden:['ซ่อนอยู่','c-hidden'] };
+
+let users = [], products = [], orders = [];
+let salesChart, catChart;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const baht = n => Number(n || 0).toLocaleString('th-TH');
+const toDate = x => x && x.toDate ? x.toDate() : null;
+const modOf = p => p.moderation || 'pending';
+const orderAmount = o => Number(o.total ?? o.price ?? 0);
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function toast(m) { $('toastMsg').textContent = m; bootstrap.Toast.getOrCreateInstance($('toast'), { delay:2500 }).show(); }
+function showError(e) {
+  console.error(e);
+  $('alertBox').innerHTML = `<div class="alert alert-danger alert-dismissible">เกิดข้อผิดพลาด: ${esc(e.message || e)}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+}
+
+/* ===== Firestore listeners ===== */
+// รอ authReady ก่อน (app.js ตรวจแล้วว่าเป็น admin) จึงเริ่มอ่านข้อมูล
+authReady.then(() => {
+db.collection('users').onSnapshot(s => { users = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); }, showError);
+db.collection('products').onSnapshot(s => { products = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); renderCharts(); renderTable(); }, showError);
+db.collection('orders').onSnapshot(s => { orders = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); renderCharts(); }, showError);
+});
+
+function renderCards() {
+  const now = new Date();
+  const sales = orders.filter(o => SALE_STATUSES.includes(o.status));
+  const monthOrders = orders.filter(o => {
+    const d = toDate(o.createdAt);
+    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  $('cMembers').textContent = baht(users.length);$('cListed').textContent = baht(products.filter(p => LISTED_STATUSES.includes(p.status) && modOf(p) === 'approved').length);
+  $('cOrders').textContent = baht(monthOrders.length);$('cSales').textContent = baht(sales.reduce((s, o) => s + orderAmount(o), 0));
+}
+
+const GREEN = '#2e9e6b', PALETTE = ['#2e9e6b','#1e5fa8','#7fc8a9','#6fa3d8','#9aa9b3','#c9d3d9'];
+
+(function initDates() {
+  const to = new Date(), from = new Date();
+  from.setDate(to.getDate() - 29);
+  $('dFrom').value = ymd(from);$('dTo').value = ymd(to);
+  $('dFrom').addEventListener('change', renderCharts);$('dTo').addEventListener('change', renderCharts);
+})();
+
+function renderCharts() {
+  const sales = orders.filter(o => SALE_STATUSES.includes(o.status));
+  const from = new Date($('dFrom').value + 'T00:00:00');
+  const to = new Date($('dTo').value + 'T23:59:59');
+
+  const byDay = {};
+  for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) byDay[ymd(d)] = 0;
+  sales.forEach(o => {
+    const d = toDate(o.createdAt);
+    if (d && d >= from && d <= to) byDay[ymd(d)] = (byDay[ymd(d)] || 0) + orderAmount(o);
+  });
+  const labels = Object.keys(byDay), data = Object.values(byDay);
+  if (salesChart) salesChart.destroy();
+  salesChart = new Chart($('salesChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label:'ยอดขาย (บาท)', data, borderColor:GREEN, backgroundColor:'rgba(46,158,107,.15)', fill:true, tension:.3, pointRadius:2 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  const catById = Object.fromEntries(products.map(p => [p.id, p.category]));
+  const byCat = {};
+  sales.forEach(o => {
+    const c = o.category || catById[o.productId] || 'อื่น ๆ';
+    byCat[c] = (byCat[c] || 0) + 1;
+  });
+  const entries = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  if (catChart) catChart.destroy();
+  catChart = new Chart($('catChart'), {
+    type: 'doughnut',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: PALETTE, borderWidth: 1 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+  });
+}
+
+function filtered() {
+  const st = $('fStatus').value, q =$('fSearch').value.trim().toLowerCase();
+  return products
+    .filter(p => !st || modOf(p) === st)
+    .filter(p => !q || `${p.name} ${p.sellerName || p.sellerId}`.toLowerCase().includes(q))
+    .sort((a, b) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0));
+}
+
+function renderTable() {
+  const list = filtered();
+  if (!list.length) { $('pBody').innerHTML = '<tr><td colspan="6" class="empty">ไม่พบประกาศสินค้า</td></tr>'; return; }
+  $('pBody').innerHTML = list.map(p => {
+    const m = modOf(p), [txt, cls] = MOD[m] || [m, 'c-hidden'];
+    const approve = m !== 'approved' ? `<button class="btn btn-sm btn-green" data-act="approved" data-id="${p.id}">อนุมัติ</button>` : '';
+    const hide = m !== 'hidden' ? `<button class="btn btn-sm btn-outline-secondary" data-act="hidden" data-id="${p.id}">ซ่อน</button>` : '';
+    return `<tr>
+      <td class="name-cell fw-medium">${esc(p.name)}</td>
+      <td>${esc(p.sellerName || p.sellerId || '-')}</td>
+      <td>${esc(p.category || '-')}</td>
+      <td class="text-end">${baht(p.price)}</td>
+      <td><span class="chip ${cls}">${txt}</span></td>
+      <td class="text-end"><div class="d-flex gap-1 justify-content-end flex-wrap">${approve}${hide}
+        <button class="btn btn-sm btn-outline-danger" data-act="delete" data-id="${p.id}">ลบ</button></div></td></tr>`;
+  }).join('');
+}
+
+$('fStatus').addEventListener('change', renderTable);$('fSearch').addEventListener('input', renderTable);
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('#pBody [data-act]');
+  if (!b) return;
+  const { act, id } = b.dataset;
+  const p = products.find(x => x.id === id);
+  try {
+    if (act === 'delete') {
+      if (!confirm(`ลบประกาศ "${p ? p.name : ''}" ถาวร?`)) return;
+      b.disabled = true;
+      await db.collection('products').doc(id).delete();
+      toast('ลบประกาศแล้ว');
+    } else {
+      b.disabled = true;
+      await db.collection('products').doc(id).update({ moderation: act, moderatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      toast(act === 'approved' ? 'อนุมัติประกาศแล้ว' : 'ซ่อนประกาศแล้ว');
+    }
+  } catch (err) { showError(err); b.disabled = false; }
+});
+
+function csvCell(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+$('btnCsv').addEventListener('click', () => {
+  const rows = [['รหัส','ชื่อสินค้า','ผู้ขาย','ประเภท','ราคา','สถานะสินค้า','สถานะประกาศ','วันที่ลง']];
+  filtered().forEach(p => rows.push([
+    p.id, p.name, p.sellerName || p.sellerId, p.category, p.price, p.status,
+    (MOD[modOf(p)] || [modOf(p)])[0], toDate(p.createdAt) ? toDate(p.createdAt).toLocaleString('th-TH') : ''
+  ]));
+  const csv = '\uFEFF' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8;' }));
+  a.download = `products_${ymd(new Date())}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>
