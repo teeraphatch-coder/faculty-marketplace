@@ -214,9 +214,14 @@ async function uploadImageToImgBB(imageFile) {
   if (imageFile.size > 5 * 1024 * 1024) throw new Error('รูปต้องมีขนาดไม่เกิน 5 MB');
   const formData = new FormData();
   formData.append('image', imageFile);
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
-  const data = await res.json();
-  if (!data.success) throw new Error('อัปโหลดรูปภาพไม่สำเร็จ');
+  let res, data;
+  try {
+    res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+    data = await res.json();
+  } catch (e) {
+    throw new Error('เชื่อมต่อ ImgBB ไม่ได้ (เครือข่ายหรือส่วนขยายบล็อกโฆษณาอาจบล็อกอยู่)');
+  }
+  if (!data.success) throw new Error('ImgBB แจ้งว่า: ' + ((data.error && data.error.message) || ('HTTP ' + res.status)));
   return data.data.url;
 }
 
