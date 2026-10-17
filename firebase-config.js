@@ -1,4 +1,4 @@
-// js/firebase-config.js
+// js/firebase-config.js  — โหลดก่อน js/app.js ในทุกหน้า
 const firebaseConfig = {
   apiKey: "AIzaSyABG1MuczTh6KlJxSaUvFwTszCMVNvaA3g",
   authDomain: "faculty-marketplac.firebaseapp.com",
@@ -10,8 +10,8 @@ const firebaseConfig = {
   measurementId: "G-2Z8Q49V5EX"
 };
 
-// Initialize Firebase
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
+const auth = firebase.auth();
 const db = firebase.firestore();
