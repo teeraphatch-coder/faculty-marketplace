@@ -160,6 +160,9 @@ function authErrorText(e) {
     'auth/too-many-requests': 'ลองผิดหลายครั้งเกินไป กรุณารอสักครู่',
     'permission-denied': 'ไม่มีสิทธิ์เข้าถึงฐานข้อมูล ตรวจสอบ Firestore Rules'
   };
+  const raw = String((e && (e.code || e.message)) || e);
+  if (raw.includes('api-key-not-valid') || raw.includes('invalid-api-key'))
+    return 'API Key ใน firebaseConfig ไม่ถูกต้อง/ถูกลบไปแล้ว — คัดลอก config ใหม่จาก Firebase Console > Project settings > Your apps (Web app) มาวางแทนส่วน firebaseConfig ในไฟล์ HTML ทุกหน้า';
   return m[e && e.code] || (e && e.message) || String(e);
 }
 
@@ -191,20 +194,6 @@ async function ensureProfile(user, extra = {}) {
 const goByRole = (p) => location.replace(p && p.role === 'admin' ? 'admin.html' : 'index.html');
 
 // ---------- ล็อกอิน / สมัคร / Google / ออกจากระบบ (throw error ให้หน้าเรียกแสดงเอง) ----------
-// เฉพาะผู้ดูแลระบบ (อีเมล/รหัสผ่าน) — ถ้าบัญชีไม่ใช่ admin จะถูกออกจากระบบทันที
-async function adminLogin(email, password) {
-  authBusy = true;
-  try {
-    const c = await auth.signInWithEmailAndPassword(String(email).trim(), password);
-    const p = await ensureProfile(c.user);
-    if (p.role !== 'admin') {
-      await auth.signOut();
-      throw new Error('บัญชีนี้ไม่ใช่ผู้ดูแลระบบ (ผู้ใช้ทั่วไปให้เข้าสู่ระบบด้วย Google)');
-    }
-    goByRole(p);
-  } catch (e) { authBusy = false; throw e; }
-}
-
 async function googleLogin() {
   authBusy = true;
   try {
