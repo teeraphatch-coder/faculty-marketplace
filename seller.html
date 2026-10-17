@@ -34,6 +34,7 @@
   .product-name { font-weight: 700; overflow-wrap: anywhere; }
   .actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
   .empty { padding: 2rem 1rem; text-align: center; color: var(--muted); }
+  img.thumb { cursor: zoom-in; }
 </style>
 </head>
 <body>
@@ -439,6 +440,29 @@ document.addEventListener('click', async e => {
     if (act === 'confirm') await decideOrder(id, true);
     if (act === 'reject') await decideOrder(id, false);
   } catch (err) { showError(err); btn.disabled = false; }
+});
+
+// 🔍 คลิกรูปสินค้าเพื่อดูแบบเต็ม (คลิกที่ใดก็ได้ / กด Esc / กด ✕ เพื่อปิด)
+function openLightbox(src) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5)';
+  const x = document.createElement('button');
+  x.textContent = '✕';
+  x.setAttribute('aria-label', 'ปิด');
+  x.style.cssText = 'position:absolute;top:14px;right:18px;width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:20px;cursor:pointer';
+  ov.append(img, x);
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+  ov.onclick = close;
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(ov);
+}
+document.addEventListener('click', (e) => {
+  const im = e.target.closest('img.p-img, img.thumb');
+  if (im) openLightbox(im.src);
 });
 
 authReady.then(({ user, profile }) => {
