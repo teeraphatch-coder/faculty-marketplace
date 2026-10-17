@@ -115,7 +115,7 @@
 
 <script>
 // สถานะ order ที่นับเป็น "ยอดขาย"
-const SALE_STATUSES = ['confirmed', 'completed'];
+const SALE_STATUSES = ['completed'];   // ขายสำเร็จ (ผู้ขายกด Sold แล้ว)
 const LISTED_STATUSES = ['Ready', 'Reserved', 'Pending Payment'];
 const MOD = { pending:['รออนุมัติ','c-pending'], approved:['อนุมัติแล้ว','c-approved'], hidden:['ซ่อนอยู่','c-hidden'] };
 
@@ -138,9 +138,12 @@ function showError(e) {
 }
 
 /* ===== Firestore listeners ===== */
+// รอ authReady ก่อน (app.js ตรวจแล้วว่าเป็น admin) จึงเริ่มอ่านข้อมูล
+authReady.then(() => {
 db.collection('users').onSnapshot(s => { users = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); }, showError);
 db.collection('products').onSnapshot(s => { products = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); renderCharts(); renderTable(); }, showError);
 db.collection('orders').onSnapshot(s => { orders = s.docs.map(d => ({id:d.id, ...d.data()})); renderCards(); renderCharts(); }, showError);
+});
 
 function renderCards() {
   const now = new Date();
