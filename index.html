@@ -1,356 +1,290 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ตลาดกลางสินค้ามือสองคณะ</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <style>
-    :root { --green: #2e9e6b; --green-dark: #1f7a51; --blue: #1e5fa8; --gray-bg: #f1f4f6; --ink: #1d2a33; --line: #dde4e9; }
-    body { font-family: 'Noto Sans Thai', sans-serif; background: var(--gray-bg); color: var(--ink); }
-    .app-nav { background: linear-gradient(90deg, var(--green), var(--blue)); }
-    .product-card { border: 1px solid var(--line); border-radius: 12px; transition: transform 0.2s; overflow: hidden; background: #fff; }
-    .product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-    .thumb { height: 180px; object-fit: cover; width: 100%; background: #e9ecef; }
-    .badge-status { font-size: 0.75rem; padding: 0.35em 0.65em; border-radius: 999px; }
-    .st-ready { background: #dff3e8; color: #1f7a51; }
-    .st-reserved { background: #fff1d6; color: #8a5a00; }
-    .st-sold { background: #dfe4e8; color: #3d4b55; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 Faculty Marketplace - ตลาดมือสองภายในคณะ</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-body: #f8fafc;
+            --text-title: #0f172a;
+            --text-content: #475569;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.04);
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-body); margin: 0; padding: 0; color: var(--text-content); }
+        
+        /* 🌐 Navigation Top Bar */
+        .navbar { background: white; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        .navbar h1 { margin: 0; font-size: 20px; color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .user-pill { display: flex; align-items: center; gap: 16px; font-weight: 600; font-size: 14px; background: #f1f5f9; padding: 8px 18px; border-radius: 30px; color: var(--text-title); }
+        .btn-logout { background: transparent; border: none; color: var(--danger); cursor: pointer; font-weight: 700; padding: 0; margin-left: 10px; transition: color 0.2s; }
+        .btn-logout:hover { color: #b91c1c; text-decoration: underline; }
+
+        .main-container { max-width: 1240px; margin: 35px auto; padding: 0 25px; display: flex; gap: 35px; flex-wrap: wrap; }
+        
+        /* 📝 Layout ฝั่งซ้าย: ฟอร์มลงประกาศ */
+        .form-panel { flex: 1; min-width: 330px; background: white; padding: 28px; border-radius: 20px; box-shadow: var(--shadow-md); height: fit-content; border: 1px solid #e2e8f0; }
+        .form-panel h2 { margin-top: 0; font-size: 18px; font-weight: 700; color: var(--text-title); margin-bottom: 22px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; }
+        
+        /* 🛍️ Layout ฝั่งขวา: รายการสินค้าและตัวกรอง */
+        .display-panel { flex: 2; min-width: 550px; }
+        
+        /* Elements & Form controls */
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #334155; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; box-sizing: border-box; font-size: 14px; background-color: #f8fafc; transition: all 0.2s; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); background-color: white; outline: none; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12); }
+        
+        .btn-post { background-color: var(--primary); color: white; padding: 13px; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 15px; font-weight: 700; transition: background 0.2s; margin-top: 5px; }
+        .btn-post:hover { background-color: var(--primary-hover); }
+
+        /* 🔍 Search Widget Panel */
+        .search-panel { background: white; padding: 22px; margin-bottom: 30px; border-radius: 20px; box-shadow: var(--shadow-md); border: 1px solid #e2e8f0; }
+        .search-panel h3 { margin-top: 0; font-size: 16px; font-weight: 700; color: var(--text-title); margin-bottom: 16px; }
+        .search-row { display: flex; gap: 15px; flex-wrap: wrap; }
+
+        /* 🛒 Product Card Grid */
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 24px; }
+        .product-card { background: white; border: 1px solid #e2e8f0; padding: 22px; border-radius: 20px; box-shadow: var(--shadow-md); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+        .product-card h3 { margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: var(--text-title); }
+        .product-card p { margin: 6px 0; font-size: 14px; color: var(--text-content); }
+        
+        .badge-price { color: var(--danger); font-size: 18px; font-weight: 800; margin: 10px 0 !important; }
+        .badge-free { color: var(--success); font-size: 18px; font-weight: 800; margin: 10px 0 !important; }
+        
+        .contact-pill { background: #f8fafc; padding: 14px; margin-top: 18px; border-radius: 12px; border-left: 4px solid var(--primary); }
+        .contact-pill h5 { margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .contact-pill p { margin: 0; font-size: 14px; color: var(--text-title); font-weight: 600; }
+
+        #products-loading { text-align: center; padding: 50px; color: var(--text-content); font-style: italic; }
+    </style>
 </head>
 <body>
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-dark app-nav sticky-top">
-    <div class="container">
-      <a class="navbar-brand fw-bold" href="index.html"><i class="fa-solid fa-store me-2"></i>ตลาดมือสองคณะ</a>
-      <div class="d-flex gap-2 align-items-center">
-        <button class="btn btn-sm btn-light fw-bold text-success" data-bs-toggle="modal" data-bs-target="#modalAddProduct">
-          <i class="fa-solid fa-plus me-1"></i> ลงขายสินค้า
-        </button>
-        <a href="Seller .html" class="btn btn-sm btn-outline-light">หน้าผู้ขาย</a>
-        <a href="Admin.html" class="btn btn-sm btn-outline-light">ผู้ดูแลระบบ</a>
-        
-        <!-- ปุ่มเข้าสู่ระบบ / ออกจากระบบ -->
-        <div id="authNav">
-          <button class="btn btn-sm btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#modalLogin">
-            <i class="fa-solid fa-right-to-bracket me-1"></i> เข้าสู่ระบบ
-          </button>
+    <!-- 🌐 Top Bar แสดงข้อมูลโปรไฟล์ User -->
+    <div class="navbar">
+        <h1>📚 Faculty Marketplace</h1>
+        <div class="user-pill">
+            <span id="user-display-name">กำลังโหลดข้อมูลผู้ใช้...</span>
+            <button class="btn-logout" onclick="logout()">ออกจากระบบ</button>
         </div>
-      </div>
     </div>
-  </nav>
-
-  <!-- Hero & Search -->
-  <div class="bg-white border-bottom py-4 mb-4">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-          <h4 class="fw-bold mb-3">ค้นหาสินค้ามือสองสภาพดีภายในคณะ</h4>
-          <div class="input-group mb-3">
-            <input type="text" id="searchInput" class="form-control" placeholder="พิมพ์ชื่อสินค้า หรือสถานที่นัดรับ...">
-            <button class="btn btn-success" onclick="applyFilters()"><i class="fa-solid fa-magnifying-glass"></i> ค้นหา</button>
-          </div>
-          <div class="d-flex gap-2 justify-content-center flex-wrap" id="catGroup">
-            <button class="btn btn-sm btn-outline-secondary active" onclick="filterCat('', this)">ทั้งหมด</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('หนังสือ/ตำรา', this)">หนังสือ/ตำรา</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('อุปกรณ์การเรียน', this)">อุปกรณ์การเรียน</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('เครื่องใช้ไฟฟ้า', this)">เครื่องใช้ไฟฟ้า</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="filterCat('เสื้อผ้า/เครื่องแต่งกาย', this)">เสื้อผ้า/เครื่องแต่งกาย</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Product Grid -->
-  <main class="container mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="fw-bold mb-0">รายการสินค้า</h5>
-      <span class="text-muted small" id="cntLabel">กำลังโหลด...</span>
-    </div>
-    <div class="row g-3" id="grid"></div>
-  </main>
-
-  <!-- Modal เข้าสู่ระบบ (Login) -->
-  <div class="modal fade" id="modalLogin" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold">เข้าสู่ระบบ</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <form id="formLogin">
-            <div class="mb-3">
-              <label class="form-label small fw-bold">รหัสประจำตัว 3 ตัวหลัง (เช่น 001)</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light">169204140</span>
-                <input type="text" id="loginCode" class="form-control" maxlength="3" required placeholder="001">
-              </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label small fw-bold">รหัสผ่าน</label>
-              <input type="password" id="loginPassword" class="form-control" required placeholder="••••••••">
-            </div>
-            <button type="submit" class="btn btn-success w-100">เข้าสู่ระบบ</button>
-          </form>
-          <hr>
-          <div class="text-center">
-            <small class="text-muted">ยังไม่มีบัญชี?</small>
-            <button class="btn btn-link btn-sm p-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalRegister">สมัครสมาชิก</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal สมัครสมาชิก (Register) -->
-  <div class="modal fade" id="modalRegister" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold">สมัครสมาชิกใหม่</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <form id="formRegister">
-            <div class="mb-2">
-              <label class="form-label small fw-bold">รหัสประจำตัว 3 ตัวหลัง</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light">169204140</span>
-                <input type="text" id="regCode" class="form-control" maxlength="3" required placeholder="001">
-              </div>
-            </div>
-            <div class="mb-2">
-              <label class="form-label small fw-bold">ชื่อ-นามสกุล / ชื่อเล่น</label>
-              <input type="text" id="regName" class="form-control" required placeholder="เช่น สมชาย ใจดี">
-            </div>
-            <div class="mb-2">
-              <label class="form-label small fw-bold">ช่องทางติดต่อ (Line ID / เบอร์โทร)</label>
-              <input type="text" id="regContact" class="form-control" required placeholder="Line: somchai_123">
-            </div>
-            <div class="mb-2">
-              <label class="form-label small fw-bold">กำหนดรหัสผ่าน</label>
-              <input type="password" id="regPassword" class="form-control" required placeholder="อย่างน้อย 6 ตัวอักษร">
-            </div>
-            <div class="mb-3">
-              <label class="form-label small fw-bold">ประเภทบัญชี</label>
-              <select id="regRole" class="form-select">
-                <option value="user">นิสิตทั่วไป (User)</option>
-                <option value="admin">ผู้ดูแลระบบ (Admin)</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">ยืนยันสมัครสมาชิก</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal ลงขายสินค้า -->
-  <div class="modal fade" id="modalAddProduct" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold">ลงประกาศขายสินค้า</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <form id="formAdd">
-            <div class="mb-2">
-              <label class="form-label small fw-bold">ชื่อสินค้า</label>
-              <input type="text" id="pName" class="form-control" required placeholder="เช่น หนังสือ Calculus II สภาพ 95%">
-            </div>
-            <div class="row g-2 mb-2">
-              <div class="col-6">
-                <label class="form-label small fw-bold">ราคา (บาท)</label>
-                <input type="number" id="pPrice" class="form-control" required placeholder="180">
-              </div>
-              <div class="col-6">
-                <label class="form-label small fw-bold">หมวดหมู่</label>
-                <select id="pCategory" class="form-select">
-                  <option value="หนังสือ/ตำรา">หนังสือ/ตำรา</option>
-                  <option value="อุปกรณ์การเรียน">อุปกรณ์การเรียน</option>
-                  <option value="เครื่องใช้ไฟฟ้า">เครื่องใช้ไฟฟ้า</option>
-                  <option value="เสื้อผ้า/เครื่องแต่งกาย">เสื้อผ้า/เครื่องแต่งกาย</option>
-                </select>
-              </div>
-            </div>
-            <div class="mb-2">
-              <label class="form-label small fw-bold">ช่องทางติดต่อ / สถานที่นัดรับ</label>
-              <input type="text" id="pLocation" class="form-control" placeholder="เช่น Line: @somchai, ใต้ตึกวิศวะ">
-            </div>
-            <div class="mb-2">
-              <label class="form-label small fw-bold">รูปภาพสินค้า</label>
-              <input type="file" id="pFile" class="form-control" accept="image/*">
-            </div>
-            <button type="submit" class="btn btn-success w-100 mt-3">ลงประกาศขาย</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Firebase & App Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/app.js"></script>
-
-  <script>
-    let allProducts = [];
-    let selectedCat = '';
-
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const baht = n => Number(n || 0).toLocaleString('th-TH') + ' บาท';
-
-    // ดึงข้อมูล Realtime
-    db.collection('products').onSnapshot(snap => {
-      allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      applyFilters();
-    });
-
-    function filterCat(cat, btn) {
-      selectedCat = cat;
-      document.querySelectorAll('#catGroup .btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      applyFilters();
-    }
-
-    function applyFilters() {
-      const q = document.getElementById('searchInput').value.trim().toLowerCase();
-      let list = allProducts.filter(p => (p.moderation || 'approved') === 'approved');
-
-      if (selectedCat) list = list.filter(p => p.category === selectedCat);
-      if (q) list = list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.location || '').toLowerCase().includes(q));
-
-      renderGrid(list);
-    }
-
-    function renderGrid(list) {
-      const grid = document.getElementById('grid');
-      document.getElementById('cntLabel').textContent = `พบ ${list.length} รายการ`;
-      grid.innerHTML = '';
-
-      if (!list.length) {
-        grid.innerHTML = '<div class="col-12 text-center text-muted py-5">ไม่พบรายการสินค้า</div>';
-        return;
-      }
-
-      list.forEach(p => {
-        const isReady = p.status === 'Ready' || !p.status;
-        const badgeCls = p.status === 'Ready' || !p.status ? 'st-ready' : p.status === 'Reserved' ? 'st-reserved' : 'st-sold';
-        const badgeTxt = p.status === 'Ready' || !p.status ? 'พร้อมขาย' : p.status === 'Reserved' ? 'ติดจอง' : 'ขายแล้ว';
-
-        grid.innerHTML += `
-          <div class="col-6 col-md-4 col-lg-3">
-            <div class="card product-card h-100">
-              <img src="${esc(p.imageUrl || 'https://picsum.photos/400/300')}" class="thumb" alt="">
-              <div class="card-body d-flex flex-column p-3">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <span class="badge bg-light text-dark border small">${esc(p.category || 'ทั่วไป')}</span>
-                  <span class="badge-status ${badgeCls}">${badgeTxt}</span>
+    
+    <div class="main-container">
+        <!-- ฝั่งซ้าย: ฟอร์มส่งต่อของมือสอง -->
+        <div class="form-panel">
+            <h2>📢 ลงประกาศส่งต่อสิ่งของ</h2>
+            <form id="product-form">
+                <div class="form-group">
+                    <label>ชื่อสินค้า / หนังสือเรียน</label>
+                    <input type="text" id="p-title" placeholder="เช่น หนังสือ Calculus 1" required>
                 </div>
-                <h6 class="fw-bold text-truncate mb-1">${esc(p.name)}</h6>
-                <div class="text-success fw-bold mb-1">${baht(p.price)}</div>
-                <div class="text-muted small mb-2"><i class="fa-solid fa-location-dot me-1"></i>${esc(p.location || 'ติดต่อผู้ขาย')}</div>
-                <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
-                  <span class="small text-muted"><i class="fa-solid fa-user me-1"></i>${esc(p.sellerName || p.sellerId || 'ผู้ขาย')}</span>
-                  <button class="btn btn-sm ${isReady ? 'btn-outline-primary' : 'btn-light disabled'}" 
-                          onclick="buyProduct('${p.id}', '${esc(p.name)}', '${esc(p.sellerId)}', ${p.price})">
-                    ${isReady ? 'สั่งซื้อ' : 'ไม่พร้อมขาย'}
-                  </button>
+                <div class="form-group">
+                    <label>ราคาขาย (บาท) *หากแจกฟรีใส่ 0</label>
+                    <input type="number" id="p-price" value="0" min="0" required>
                 </div>
-              </div>
+                <div class="form-group">
+                    <label>เหมาะสำหรับชั้นปี</label>
+                    <select id="p-targetYear">
+                        <option value="1">ปี 1 (รุ่นน้อง)</option>
+                        <option value="2">ปี 2</option>
+                        <option value="3">ปี 3</option>
+                        <option value="4">ปี 4 (รุ่นพี่)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>รหัสวิชา (ถ้ามี)</label>
+                    <input type="text" id="p-courseCode" placeholder="เช่น ENG101">
+                </div>
+                <div class="form-group">
+                    <label>หมวดหมู่สินค้า</label>
+                    <select id="p-categoryId">
+                        <option value="-N123456789abc">หนังสือเรียน</option>
+                        <option value="cat02">แนวข้อสอบเก่า</option>
+                        <option value="cat03">อุปกรณ์การศึกษา</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Line ID ผู้ขาย</label>
+                    <input type="text" id="p-lineId" placeholder="เช่น line_id123" required>
+                </div>
+                <button type="submit" class="btn-post">➕ ลงประกาศขาย</button>
+            </form>
+        </div>
+
+        <!-- ฝั่งขวา: เครื่องมือค้นหาและรายการสินค้า -->
+        <div class="display-panel">
+            
+            <div class="search-panel">
+                <h3>🔍 ค้นหาและคัดกรองสินค้า</h3>
+                <div class="search-row">
+                    <div style="flex: 2; min-width: 180px;">
+                        <input type="text" id="filter-courseCode" placeholder="พิมพ์รหัสวิชาเพื่อค้นหา...">
+                    </div>
+                    <div style="flex: 1; min-width: 140px;">
+                        <select id="filter-targetYear">
+                            <option value="all">ทั้งหมด ทุกชั้นปี</option>
+                            <option value="1">ปี 1</option>
+                            <option value="2">ปี 2</option>
+                            <option value="3">ปี 3</option>
+                            <option value="4">ปี 4</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-          </div>
-        `;
-      });
-    }
 
-    // สั่งซื้อสินค้า
-    async function buyProduct(pid, pname, sellerId, price) {
-      const user = firebase.auth().currentUser;
-      if (!user) {
-        alert("กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อสินค้า");
-        new bootstrap.Modal(document.getElementById('modalLogin')).show();
-        return;
-      }
+            <h2>🛍️ สินค้าที่มีการส่งต่ออยู่</h2>
+            <div id="products-loading">กำลังโหลดข้อมูลสินค้าจากระบบ...</div>
+            <div class="product-grid" id="product-list"></div>
+        </div>
+    </div>
 
-      try {
-        const batch = db.batch();
-        const orderRef = db.collection('orders').doc();
+    <!-- Firebase Library Core -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-        batch.set(orderRef, {
-          productId: pid,
-          productName: pname,
-          sellerId: sellerId || 'seller01',
-          buyerId: user.uid,
-          status: 'requested',
-          total: price,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    <!-- 2. โหลด firebase.js ของเรา -->
+    <script src="firebase.js"></script>
+
+    <script>
+        firebase.initializeApp(window.firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const productsRef = db.ref('products');   // <- เดิมไม่เคยประกาศตัวแปรนี้ จึงโหลด/ลงข้อมูลไม่ได้
+
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+        let allProducts = {};
+        let currentUser = null;
+        let currentName = '';
+        let listening = false;
+
+        // 🔒 ตรวจสอบการล็อกอิน (ใช้ Firebase Auth เท่านั้น)
+        auth.onAuthStateChanged((user) => {
+            if (!user) { window.location.href = 'auth.html'; return; }
+            currentUser = user;
+            currentName = user.displayName || user.email;
+
+            db.ref('user/' + user.uid).once('value').then((snap) => {
+                const u = snap.val();
+                if (u) {
+                    currentName = u.name || u.fullName || currentName;
+                    const prefix = u.role === 'admin' ? '⚡ แอดมิน: ' : '👤 คุณ: ';
+                    $('user-display-name').innerText = `${prefix}${currentName}` + (u.year ? ` (ปี ${u.year})` : '');
+                } else {
+                    $('user-display-name').innerText = `👤 คุณ: ${user.email}`;
+                }
+            }).catch(() => { $('user-display-name').innerText = `👤 คุณ: ${user.email}`; });
+
+            startListening();
         });
 
-        batch.update(db.collection('products').doc(pid), {
-          status: 'Reserved',
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        function logout() {
+            auth.signOut().then(() => { window.location.href = 'auth.html'; });
+        }
+
+        // 🔄 ฟังข้อมูลสินค้าแบบเรียลไทม์ (ผูก listener ครั้งเดียว แล้วกรองฝั่ง client)
+        function startListening() {
+            if (listening) return;
+            listening = true;
+            productsRef.on('value', (snapshot) => {
+                allProducts = snapshot.val() || {};
+                renderProducts();
+            }, (err) => {
+                $('products-loading').style.display = 'none';
+                $('product-list').innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#ef4444;padding:30px;">โหลดข้อมูลไม่สำเร็จ: ${esc(err.message)}<br>(ตรวจสอบ Realtime Database Rules และ databaseURL ใน firebase.js)</p>`;
+            });
+        }
+
+        function renderProducts() {
+            const searchCourse = $('filter-courseCode').value.toUpperCase().trim();
+            const selectYear = $('filter-targetYear').value;
+            const box = $('product-list');
+            $('products-loading').style.display = 'none';
+
+            const items = Object.keys(allProducts).map(k => ({ ...allProducts[k], _key: k }))
+                .filter(p => p.status === 'available' && p.isApproved === true)
+                .filter(p => searchCourse === '' || (p.courseCode && String(p.courseCode).toUpperCase().includes(searchCourse)))
+                .filter(p => selectYear === 'all' || p.targetYear == selectYear)
+                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            if (!Object.keys(allProducts).length) {
+                box.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:30px;">ยังไม่มีสินค้าในระบบ</p>';
+                return;
+            }
+            if (!items.length) {
+                box.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:30px;">❌ ไม่พบสินค้าที่ตรงกับการค้นหา</p>';
+                return;
+            }
+            box.innerHTML = items.map(p => {
+                const priceTag = Number(p.price) === 0
+                    ? '<p class="badge-free">🎁 แจกฟรี</p>'
+                    : `<p class="badge-price">${esc(p.price)} บาท</p>`;
+                const line = p.sellerContact && p.sellerContact.lineId ? p.sellerContact.lineId : 'ไม่ได้ระบุ';
+                return `
+                <div class="product-card">
+                    <div>
+                        <h3>${esc(p.title)}</h3>
+                        ${priceTag}
+                        <p><strong>เหมาะสำหรับ:</strong> ชั้นปี ${esc(p.targetYear)}</p>
+                        <p><strong>รหัสวิชา:</strong> ${esc(p.courseCode || '-')}</p>
+                    </div>
+                    <div class="contact-pill">
+                        <h5>👤 ติดต่อผู้ส่งต่อ</h5>
+                        <p>Line ID: <strong>${esc(line)}</strong></p>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ➕ โพสต์ประกาศสินค้า
+        $('product-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentUser) { alert('โปรดเข้าสู่ระบบก่อนลงประกาศครับ'); return; }
+
+            const price = parseInt($('p-price').value, 10);
+            if (isNaN(price) || price < 0) { alert('กรุณาใส่ราคาให้ถูกต้อง'); return; }
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+
+            const newRef = productsRef.push();
+            newRef.set({
+                productId: newRef.key,
+                title: $('p-title').value.trim(),
+                price: price,
+                targetYear: parseInt($('p-targetYear').value, 10),
+                courseCode: $('p-courseCode').value.toUpperCase().trim(),
+                categoryId: $('p-categoryId').value,
+                status: 'available',
+                isApproved: true,            // ถ้าต้องการให้แอดมินอนุมัติก่อน ให้เปลี่ยนเป็น false
+                sellerId: currentUser.uid,
+                sellerName: currentName,
+                sellerContact: { lineId: $('p-lineId').value.trim(), facebook: '' },
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            })
+            .then(() => {
+                alert('🎉 ลงประกาศสินค้าเรียบร้อยแล้ว!');
+                $('product-form').reset();
+            })
+            .catch((error) => {
+                console.error(error);
+                alert('ลงประกาศไม่สำเร็จ: ' + error.message);
+            })
+            .finally(() => { btn.disabled = false; });
         });
 
-        await batch.commit();
-        alert("ส่งคำขอสั่งซื้อเรียบร้อยแล้ว!");
-      } catch (err) {
-        alert("เกิดข้อผิดพลาด: " + err.message);
-      }
-    }
-
-    // Form Event Listeners
-    document.getElementById('formLogin').addEventListener('submit', e => {
-      e.preventDefault();
-      loginUser(document.getElementById('loginCode').value, document.getElementById('loginPassword').value);
-    });
-
-    document.getElementById('formRegister').addEventListener('submit', e => {
-      e.preventDefault();
-      registerUser(
-        document.getElementById('regCode').value,
-        document.getElementById('regPassword').value,
-        document.getElementById('regName').value,
-        document.getElementById('regContact').value,
-        document.getElementById('regRole').value
-      );
-    });
-
-    document.getElementById('formAdd').addEventListener('submit', async e => {
-      e.preventDefault();
-      const fileInput = document.getElementById('pFile');
-      const file = fileInput.files[0];
-
-      createProductPost(
-        document.getElementById('pName').value,
-        document.getElementById('pPrice').value,
-        document.getElementById('pCategory').value,
-        document.getElementById('pLocation').value,
-        file
-      );
-
-      bootstrap.Modal.getInstance(document.getElementById('modalAddProduct')).hide();
-      document.getElementById('formAdd').reset();
-    });
-
-    // อัปเดต UI เมื่อสลับสถานะ Login
-    firebase.auth().onAuthStateChanged(user => {
-      const authNav = document.getElementById('authNav');
-      if (user) {
-        authNav.innerHTML = `<button class="btn btn-sm btn-outline-light" onclick="logoutUser()">ออกจากระบบ</button>`;
-      } else {
-        authNav.innerHTML = `<button class="btn btn-sm btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#modalLogin"><i class="fa-solid fa-right-to-bracket me-1"></i> เข้าสู่ระบบ</button>`;
-      }
-    });
-  </script>
+        $('filter-courseCode').addEventListener('input', renderProducts);
+        $('filter-targetYear').addEventListener('change', renderProducts);
+    </script>
 </body>
 </html>
