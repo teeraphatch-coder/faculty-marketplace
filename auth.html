@@ -170,12 +170,12 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="email">อีเมลผู้ใช้งาน</label>
-                <input type="email" id="email" placeholder="example@gmail.com" required>
+                <label for="email">อีเมล หรือ รหัสประจำตัว 3 ตัวท้าย</label>
+                <input type="text" id="email" placeholder="example@gmail.com หรือ 001" autocomplete="username" required>
             </div>
             <div class="form-group">
                 <label for="password">รหัสผ่าน</label>
-                <input type="password" id="password" placeholder="••••••••" required>
+                <input type="password" id="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="current-password" minlength="6" required>
             </div>
             <button type="submit" class="btn-submit" id="submitBtn">เข้าสู่ระบบ</button>
         </form>
@@ -194,60 +194,15 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs (Compat Version) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <!-- ใช้ config ชุดเดียวกับ index.html (แก้ค่า apiKey ที่ firebase.js ที่เดียว) -->
-    <script src="firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/app.js"></script>
 
     <script>
-        // ถ้าโหลด firebase.js ไม่สำเร็จ (เช่น 404 บน hosting) ให้แจ้งชัด ๆ แทนที่ระบบจะพังเงียบ ๆ
-        if (!window.firebaseConfig) {
-            document.body.innerHTML = '<div style="max-width:560px;margin:80px auto;padding:24px;font-family:sans-serif;color:#b91c1c">โหลดไฟล์ firebase.js ไม่สำเร็จ (404) — ตรวจสอบว่าไฟล์ firebase.js อยู่โฟลเดอร์เดียวกับหน้านี้และถูก deploy ขึ้นเซิร์ฟเวอร์แล้ว</div>';
-            throw new Error('firebase.js not loaded');
-        }
-        if (!firebase.apps.length) firebase.initializeApp(window.firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
         const $ = id => document.getElementById(id);
-
         let isRegister = false;
-        let busy = false;   // กัน redirect ก่อนเขียนโปรไฟล์เสร็จ
-
-        // ถ้าล็อกอินค้างอยู่แล้ว ไปหน้าหลักเลย
-        auth.onAuthStateChanged((u) => { if (u && !busy) window.location.href = 'index.html'; });
-
-        const ERR = {
-            'auth/operation-not-allowed': 'ยังไม่ได้เปิดวิธีล็อกอินนี้ใน Firebase Console (Authentication > Sign-in method)',
-            'auth/unauthorized-domain': 'โดเมนนี้ยังไม่ได้อนุญาต (Authentication > Settings > Authorized domains) และห้ามเปิดไฟล์แบบ file:// ให้รันผ่าน localhost',
-            'auth/email-already-in-use': 'อีเมลนี้ถูกใช้สมัครแล้ว',
-            'auth/weak-password': 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
-            'auth/invalid-credential': 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
-            'auth/invalid-api-key': 'API Key ใน firebase.js ไม่ถูกต้อง',
-            'auth/popup-closed-by-user': 'ปิดหน้าต่างล็อกอินก่อนเสร็จสิ้น'
-        };
-        const fail = (e) => { console.error(e); busy = false; alert(ERR[e.code] || e.message); };
-
-        // สร้างโปรไฟล์ครั้งแรก / อัปเดตเวลาล็อกอินครั้งต่อไป (ไม่เขียนทับ role เดิม)
-        function saveProfile(user, extra = {}) {
-            const ref = db.ref('user/' + user.uid);
-            const now = new Date().toISOString();
-            return ref.once('value').then((snap) => {
-                if (snap.exists()) return ref.update({ lastLogin: now });
-                const profile = {
-                    name: extra.name || user.displayName || user.email,
-                    email: user.email,
-                    photoURL: user.photoURL || '',
-                    role: 'student',
-                    lastLogin: now
-                };
-                if (extra.year) profile.year = extra.year;
-                return ref.set(profile);
-            });
-        }
-
-        const goHome = () => { window.location.href = 'index.html'; };
 
         // สลับโหมด เข้าสู่ระบบ / สมัครสมาชิก
         $('toggleLink').addEventListener('click', (e) => {
@@ -261,28 +216,20 @@
             $('toggleLink').textContent = isRegister ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกนักศึกษา';
         });
 
-        // อีเมล / รหัสผ่าน (ทั้งล็อกอินและสมัคร)
-        $('loginForm').addEventListener('submit', (e) => {
+        // ฟังก์ชัน loginUser / registerUser / googleLogin อยู่ใน js/app.js (สำเร็จแล้วจะพาไปหน้า user/admin ตามสิทธิ์เอง)
+        $('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = $('email').value.trim();
-            const password = $('password').value;
-            busy = true;
-
-            const job = isRegister
-                ? auth.createUserWithEmailAndPassword(email, password)
-                    .then(c => saveProfile(c.user, { name: $('fullName').value.trim(), year: parseInt($('year').value, 10) }))
-                : auth.signInWithEmailAndPassword(email, password)
-                    .then(c => saveProfile(c.user));
-            job.then(goHome).catch(fail);
+            const btn = $('submitBtn');
+            btn.disabled = true;
+            try {
+                if (isRegister) await registerUser($('email').value, $('password').value, $('fullName').value.trim(), parseInt($('year').value, 10));
+                else await loginUser($('email').value, $('password').value);
+            } catch (err) { console.error(err); alert(authErrorText(err)); btn.disabled = false; }
         });
 
-        // Google
-        $('googleBtn').addEventListener('click', () => {
-            busy = true;
-            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
-                .then(r => saveProfile(r.user))
-                .then(goHome)
-                .catch(fail);
+        $('googleBtn').addEventListener('click', async () => {
+            try { await googleLogin(); }
+            catch (err) { console.error(err); alert(authErrorText(err)); }
         });
     </script>
 </body>
