@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ผู้ใช้: อ่าน/แก้เฉพาะของตัวเอง สมัครได้เฉพาะ role 'user' และแก้ role เองไม่ได้ (ตั้ง admin ผ่าน Console)
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'user';
+      allow update: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+
+    // สินค้า
+    match /products/{id} {
+      allow read: if signedIn() && (resource.data.moderation == 'approved'
+                    || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow create: if signedIn() && request.resource.data.sellerId == request.auth.uid
+                    && request.resource.data.moderation in ['pending', 'approved'];
+      allow update: if signedIn() && (
+            isAdmin()
+            // เจ้าของแก้ได้ แต่เปิด/ซ่อนประกาศเองไม่ได้
+            || (resource.data.sellerId == request.auth.uid
+                && request.resource.data.sellerId == resource.data.sellerId
+                && request.resource.data.moderation == resource.data.moderation)
+            // ผู้ซื้อกดขอจอง: เปลี่ยนได้แค่ Ready -> Reserved
+            || (resource.data.status == 'Ready' && request.resource.data.status == 'Reserved'
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+          );
+      allow delete: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid);
+    }
+
+    // คำสั่งซื้อ
+    match /orders/{id} {
+      allow read: if signedIn() && (resource.data.buyerId == request.auth.uid
+                    || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow create: if signedIn() && request.resource.data.buyerId == request.auth.uid
+                    && request.resource.data.status == 'requested';
+      allow update: if signedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+  }
+}
