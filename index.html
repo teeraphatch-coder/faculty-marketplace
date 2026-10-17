@@ -64,6 +64,10 @@
         .contact-pill p { margin: 0; font-size: 14px; color: var(--text-title); font-weight: 600; }
 
         #products-loading { text-align: center; padding: 50px; color: var(--text-content); font-style: italic; }
+            .nav-links a { color: var(--primary); text-decoration: none; font-weight: 700; margin-right: 6px; }
+        .p-img { width: 100%; height: 160px; object-fit: cover; border-radius: 12px; margin-bottom: 12px; background: #f1f5f9; }
+        .btn-buy { margin-top: 14px; width: 100%; background: var(--success); color: #fff; border: none; border-radius: 10px; padding: 11px; font-weight: 700; cursor: pointer; }
+        .btn-buy:hover { filter: brightness(.92); }
     </style>
 </head>
 <body>
@@ -72,8 +76,8 @@
     <div class="navbar">
         <h1>📚 Faculty Marketplace</h1>
         <div class="user-pill">
-            <span id="user-display-name">กำลังโหลดข้อมูลผู้ใช้...</span>
-            <button class="btn-logout" onclick="logout()">ออกจากระบบ</button>
+            <span id="nav-links"></span><span id="user-display-name">กำลังโหลดข้อมูลผู้ใช้...</span>
+            <button class="btn-logout" onclick="logoutUser()">ออกจากระบบ</button>
         </div>
     </div>
     
@@ -106,10 +110,14 @@
                 <div class="form-group">
                     <label>หมวดหมู่สินค้า</label>
                     <select id="p-categoryId">
-                        <option value="-N123456789abc">หนังสือเรียน</option>
-                        <option value="cat02">แนวข้อสอบเก่า</option>
-                        <option value="cat03">อุปกรณ์การศึกษา</option>
+                        <option value="หนังสือเรียน">หนังสือเรียน</option>
+                        <option value="แนวข้อสอบเก่า">แนวข้อสอบเก่า</option>
+                        <option value="อุปกรณ์การศึกษา">อุปกรณ์การศึกษา</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>รูปสินค้า (ไม่บังคับ, ไม่เกิน 5 MB)</label>
+                    <input type="file" id="p-image" accept="image/*">
                 </div>
                 <div class="form-group">
                     <label>Line ID ผู้ขาย</label>
@@ -146,147 +154,138 @@
         </div>
     </div>
 
-    <!-- Firebase Library Core -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-    <!-- 2. โหลด firebase.js ของเรา -->
-    <script src="firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/app.js"></script>
 
     <script>
-        // ถ้าโหลด firebase.js ไม่สำเร็จ (เช่น 404 บน hosting) ให้แจ้งชัด ๆ แทนที่ระบบจะพังเงียบ ๆ
-        if (!window.firebaseConfig) {
-            document.body.innerHTML = '<div style="max-width:560px;margin:80px auto;padding:24px;font-family:sans-serif;color:#b91c1c">โหลดไฟล์ firebase.js ไม่สำเร็จ (404) — ตรวจสอบว่าไฟล์ firebase.js อยู่โฟลเดอร์เดียวกับหน้านี้และถูก deploy ขึ้นเซิร์ฟเวอร์แล้ว</div>';
-            throw new Error('firebase.js not loaded');
-        }
-        firebase.initializeApp(window.firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
-        const productsRef = db.ref('products');   // <- เดิมไม่เคยประกาศตัวแปรนี้ จึงโหลด/ลงข้อมูลไม่ได้
-
         const $ = id => document.getElementById(id);
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        let allProducts = [];
 
-        let allProducts = {};
-        let currentUser = null;
-        let currentName = '';
-        let listening = false;
+        // รอจน app.js ตรวจสอบการล็อกอินและโหลดโปรไฟล์เสร็จ
+        authReady.then(({ user, profile }) => {
+            const isAdmin = profile.role === 'admin';
+            $('user-display-name').textContent = (isAdmin ? '⚡ แอดมิน: ' : '👤 คุณ: ')
+                + (profile.displayName || user.email) + (profile.year ? ` (ปี ${profile.year})` : '');
+            $('nav-links').innerHTML = '<a href="seller.html">🏪 สินค้าของฉัน</a>' + (isAdmin ? '<a href="admin.html">⚡ แอดมิน</a>' : '');
 
-        // 🔒 ตรวจสอบการล็อกอิน (ใช้ Firebase Auth เท่านั้น)
-        auth.onAuthStateChanged((user) => {
-            if (!user) { window.location.href = 'auth.html'; return; }
-            currentUser = user;
-            currentName = user.displayName || user.email;
-
-            db.ref('user/' + user.uid).once('value').then((snap) => {
-                const u = snap.val();
-                if (u) {
-                    currentName = u.name || u.fullName || currentName;
-                    const prefix = u.role === 'admin' ? '⚡ แอดมิน: ' : '👤 คุณ: ';
-                    $('user-display-name').innerText = `${prefix}${currentName}` + (u.year ? ` (ปี ${u.year})` : '');
-                } else {
-                    $('user-display-name').innerText = `👤 คุณ: ${user.email}`;
-                }
-            }).catch(() => { $('user-display-name').innerText = `👤 คุณ: ${user.email}`; });
-
-            startListening();
-        });
-
-        function logout() {
-            const go = () => { window.location.href = 'auth.html'; };
-            firebase.auth().signOut().then(go, go);   // ไปหน้าล็อกอินเสมอ แม้ signOut มีปัญหา
-        }
-
-        // 🔄 ฟังข้อมูลสินค้าแบบเรียลไทม์ (ผูก listener ครั้งเดียว แล้วกรองฝั่ง client)
-        function startListening() {
-            if (listening) return;
-            listening = true;
-            productsRef.on('value', (snapshot) => {
-                allProducts = snapshot.val() || {};
+            // อ่านเฉพาะประกาศที่อนุมัติแล้ว (ตรงกับ Firestore Rules)
+            db.collection('products').where('moderation', '==', 'approved').onSnapshot((snap) => {
+                allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderProducts();
             }, (err) => {
                 $('products-loading').style.display = 'none';
-                $('product-list').innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#ef4444;padding:30px;">โหลดข้อมูลไม่สำเร็จ: ${esc(err.message)}<br>(ตรวจสอบ Realtime Database Rules และ databaseURL ใน firebase.js)</p>`;
+                $('product-list').innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#ef4444;padding:30px;">โหลดสินค้าไม่สำเร็จ: ${esc(authErrorText(err))}</p>`;
             });
-        }
+        });
 
         function renderProducts() {
             const searchCourse = $('filter-courseCode').value.toUpperCase().trim();
             const selectYear = $('filter-targetYear').value;
-            const box = $('product-list');
             $('products-loading').style.display = 'none';
 
-            const items = Object.keys(allProducts).map(k => ({ ...allProducts[k], _key: k }))
-                .filter(p => p.status === 'available' && p.isApproved === true)
-                .filter(p => searchCourse === '' || (p.courseCode && String(p.courseCode).toUpperCase().includes(searchCourse)))
+            const items = allProducts
+                .filter(p => p.status === 'Ready')
+                .filter(p => !searchCourse || String(p.courseCode || '').toUpperCase().includes(searchCourse))
                 .filter(p => selectYear === 'all' || p.targetYear == selectYear)
-                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
-            if (!Object.keys(allProducts).length) {
-                box.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:30px;">ยังไม่มีสินค้าในระบบ</p>';
-                return;
-            }
             if (!items.length) {
-                box.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:30px;">❌ ไม่พบสินค้าที่ตรงกับการค้นหา</p>';
+                $('product-list').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:30px;">❌ ไม่พบสินค้าที่ตรงกับการค้นหา</p>';
                 return;
             }
-            box.innerHTML = items.map(p => {
-                const priceTag = Number(p.price) === 0
-                    ? '<p class="badge-free">🎁 แจกฟรี</p>'
-                    : `<p class="badge-price">${esc(p.price)} บาท</p>`;
+            $('product-list').innerHTML = items.map(p => {
+                const priceTag = Number(p.price) === 0 ? '<p class="badge-free">🎁 แจกฟรี</p>' : `<p class="badge-price">${esc(p.price)} บาท</p>`;
                 const line = p.sellerContact && p.sellerContact.lineId ? p.sellerContact.lineId : 'ไม่ได้ระบุ';
+                const img = p.imageUrl ? `<img class="p-img" src="${esc(p.imageUrl)}" alt="" loading="lazy">` : '';
+                const mine = currentUser && p.sellerId === currentUser.uid;
                 return `
                 <div class="product-card">
                     <div>
-                        <h3>${esc(p.title)}</h3>
+                        ${img}
+                        <h3>${esc(p.name || p.title)}</h3>
                         ${priceTag}
+                        <p><strong>หมวดหมู่:</strong> ${esc(p.category || '-')}</p>
                         <p><strong>เหมาะสำหรับ:</strong> ชั้นปี ${esc(p.targetYear)}</p>
                         <p><strong>รหัสวิชา:</strong> ${esc(p.courseCode || '-')}</p>
                     </div>
-                    <div class="contact-pill">
-                        <h5>👤 ติดต่อผู้ส่งต่อ</h5>
-                        <p>Line ID: <strong>${esc(line)}</strong></p>
+                    <div>
+                        <div class="contact-pill">
+                            <h5>👤 ผู้ส่งต่อ: ${esc(p.sellerName || '-')}</h5>
+                            <p>Line ID: <strong>${esc(line)}</strong></p>
+                        </div>
+                        ${mine ? '' : `<button class="btn-buy" data-buy="${p.id}">🛒 ขอซื้อ / จอง</button>`}
                     </div>
                 </div>`;
             }).join('');
         }
 
-        // ➕ โพสต์ประกาศสินค้า
-        $('product-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!currentUser) { alert('โปรดเข้าสู่ระบบก่อนลงประกาศครับ'); return; }
+        // ผู้ซื้อกดขอซื้อ/จอง → สร้าง order (requested) + ล็อกสินค้าเป็น Reserved ใน batch เดียว
+        $('product-list').addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-buy]');
+            if (!btn) return;
+            const p = allProducts.find(x => x.id === btn.dataset.buy);
+            if (!p || !confirm(`ยืนยันขอซื้อ/จอง "${p.name || p.title}" ?`)) return;
+            btn.disabled = true;
+            try {
+                const ts = firebase.firestore.FieldValue.serverTimestamp();
+                const oRef = db.collection('orders').doc();
+                const batch = db.batch();
+                batch.set(oRef, {
+                    orderId: oRef.id, productId: p.id, productName: p.name || p.title || '',
+                    category: p.category || '', total: Number(p.price) || 0,
+                    sellerId: p.sellerId, buyerId: currentUser.uid,
+                    buyerName: currentProfile.displayName || currentUser.email,
+                    status: 'requested', createdAt: ts
+                });
+                batch.update(db.collection('products').doc(p.id), { status: 'Reserved', updatedAt: ts });
+                await batch.commit();
+                alert('ส่งคำขอแล้ว! รอผู้ขายยืนยัน แล้วติดต่อผู้ขายทาง Line ได้เลย');
+            } catch (err) {
+                console.error(err);
+                alert('ส่งคำขอไม่สำเร็จ (อาจมีผู้จองไปก่อนแล้ว): ' + authErrorText(err));
+                btn.disabled = false;
+            }
+        });
 
+        // ➕ ลงประกาศสินค้า
+        $('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
             const price = parseInt($('p-price').value, 10);
             if (isNaN(price) || price < 0) { alert('กรุณาใส่ราคาให้ถูกต้อง'); return; }
 
             const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true;
-
-            const newRef = productsRef.push();
-            newRef.set({
-                productId: newRef.key,
-                title: $('p-title').value.trim(),
-                price: price,
-                targetYear: parseInt($('p-targetYear').value, 10),
-                courseCode: $('p-courseCode').value.toUpperCase().trim(),
-                categoryId: $('p-categoryId').value,
-                status: 'available',
-                isApproved: true,            // ถ้าต้องการให้แอดมินอนุมัติก่อน ให้เปลี่ยนเป็น false
-                sellerId: currentUser.uid,
-                sellerName: currentName,
-                sellerContact: { lineId: $('p-lineId').value.trim(), facebook: '' },
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            })
-            .then(() => {
-                alert('🎉 ลงประกาศสินค้าเรียบร้อยแล้ว!');
-                $('product-form').reset();
-            })
-            .catch((error) => {
-                console.error(error);
-                alert('ลงประกาศไม่สำเร็จ: ' + error.message);
-            })
-            .finally(() => { btn.disabled = false; });
+            btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+            try {
+                const imageUrl = await uploadImageToImgBB($('p-image').files[0]);
+                const ref = db.collection('products').doc();
+                await ref.set({
+                    productId: ref.id,
+                    name: $('p-title').value.trim(),
+                    price,
+                    category: $('p-categoryId').value,
+                    targetYear: parseInt($('p-targetYear').value, 10),
+                    courseCode: $('p-courseCode').value.toUpperCase().trim(),
+                    imageUrl,
+                    status: 'Ready',
+                    moderation: AUTO_APPROVE ? 'approved' : 'pending',
+                    sellerId: currentUser.uid,
+                    sellerName: currentProfile.displayName || currentUser.email,
+                    sellerContact: { lineId: $('p-lineId').value.trim() },
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert(AUTO_APPROVE ? '🎉 ลงประกาศเรียบร้อยแล้ว!' : '🎉 ส่งประกาศแล้ว รอแอดมินอนุมัติ');
+                e.target.reset();
+            } catch (err) {
+                console.error(err);
+                alert('ลงประกาศไม่สำเร็จ: ' + authErrorText(err));
+            } finally {
+                btn.disabled = false; btn.textContent = '➕ ลงประกาศขาย';
+            }
         });
 
         $('filter-courseCode').addEventListener('input', renderProducts);
