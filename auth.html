@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบ / สมัครสมาชิก - Faculty Marketplace</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+            color: #fff;
+        }
+
+        .auth-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .auth-header h2 {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .form-group select option { color: #000; }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #6c5ce7;
+            box-shadow: 0 0 10px rgba(108, 92, 231, 0.3);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: #181920;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background: #252733;
+        }
+
+        .divider {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .divider span {
+            padding: 0 10px;
+        }
+
+        .btn-google {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-google:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-google img {
+            width: 18px;
+            height: 18px;
+        }
+
+        .auth-footer {
+            margin-top: 25px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .auth-footer a {
+            color: #6c5ce7;
+            text-decoration: none;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <div class="auth-header">
+            <h2 id="formTitle">🔑 เข้าสู่ระบบ</h2>
+        </div>
+
+        <form id="loginForm">
+            <div id="regFields" style="display:none">
+                <div class="form-group">
+                    <label for="fullName">ชื่อ-นามสกุล</label>
+                    <input type="text" id="fullName" placeholder="สมชาย ใจดี">
+                </div>
+                <div class="form-group">
+                    <label for="year">ชั้นปี</label>
+                    <select id="year">
+                        <option value="1">ปี 1</option><option value="2">ปี 2</option>
+                        <option value="3">ปี 3</option><option value="4">ปี 4</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="email">อีเมลผู้ใช้งาน</label>
+                <input type="email" id="email" placeholder="example@gmail.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">รหัสผ่าน</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-submit" id="submitBtn">เข้าสู่ระบบ</button>
+        </form>
+
+        <div class="divider">
+            <span>หรือ</span>
+        </div>
+
+        <button type="button" class="btn-google" id="googleBtn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+            เข้าสู่ระบบด้วย Google
+        </button>
+
+        <div class="auth-footer">
+            <span id="toggleText">ยังไม่มีบัญชีใช่ไหม?</span> <a href="#" id="toggleLink">สมัครสมาชิกนักศึกษา</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <!-- ใช้ config ชุดเดียวกับ index.html (แก้ค่า apiKey ที่ firebase.js ที่เดียว) -->
+    <script src="firebase.js"></script>
+
+    <script>
+        if (!firebase.apps.length) firebase.initializeApp(window.firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const $ = id => document.getElementById(id);
+
+        let isRegister = false;
+        let busy = false;   // กัน redirect ก่อนเขียนโปรไฟล์เสร็จ
+
+        // ถ้าล็อกอินค้างอยู่แล้ว ไปหน้าหลักเลย
+        auth.onAuthStateChanged((u) => { if (u && !busy) window.location.href = 'index.html'; });
+
+        const ERR = {
+            'auth/operation-not-allowed': 'ยังไม่ได้เปิดวิธีล็อกอินนี้ใน Firebase Console (Authentication > Sign-in method)',
+            'auth/unauthorized-domain': 'โดเมนนี้ยังไม่ได้อนุญาต (Authentication > Settings > Authorized domains) และห้ามเปิดไฟล์แบบ file:// ให้รันผ่าน localhost',
+            'auth/email-already-in-use': 'อีเมลนี้ถูกใช้สมัครแล้ว',
+            'auth/weak-password': 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+            'auth/invalid-credential': 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+            'auth/invalid-api-key': 'API Key ใน firebase.js ไม่ถูกต้อง',
+            'auth/popup-closed-by-user': 'ปิดหน้าต่างล็อกอินก่อนเสร็จสิ้น'
+        };
+        const fail = (e) => { console.error(e); busy = false; alert(ERR[e.code] || e.message); };
+
+        // สร้างโปรไฟล์ครั้งแรก / อัปเดตเวลาล็อกอินครั้งต่อไป (ไม่เขียนทับ role เดิม)
+        function saveProfile(user, extra = {}) {
+            const ref = db.ref('user/' + user.uid);
+            const now = new Date().toISOString();
+            return ref.once('value').then((snap) => {
+                if (snap.exists()) return ref.update({ lastLogin: now });
+                const profile = {
+                    name: extra.name || user.displayName || user.email,
+                    email: user.email,
+                    photoURL: user.photoURL || '',
+                    role: 'student',
+                    lastLogin: now
+                };
+                if (extra.year) profile.year = extra.year;
+                return ref.set(profile);
+            });
+        }
+
+        const goHome = () => { window.location.href = 'index.html'; };
+
+        // สลับโหมด เข้าสู่ระบบ / สมัครสมาชิก
+        $('toggleLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            isRegister = !isRegister;
+            $('regFields').style.display = isRegister ? 'block' : 'none';
+            $('fullName').required = isRegister;
+            $('formTitle').textContent = isRegister ? '📝 สมัครสมาชิกนักศึกษา' : '🔑 เข้าสู่ระบบ';
+            $('submitBtn').textContent = isRegister ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ';
+            $('toggleText').textContent = isRegister ? 'มีบัญชีอยู่แล้ว?' : 'ยังไม่มีบัญชีใช่ไหม?';
+            $('toggleLink').textContent = isRegister ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกนักศึกษา';
+        });
+
+        // อีเมล / รหัสผ่าน (ทั้งล็อกอินและสมัคร)
+        $('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = $('email').value.trim();
+            const password = $('password').value;
+            busy = true;
+
+            const job = isRegister
+                ? auth.createUserWithEmailAndPassword(email, password)
+                    .then(c => saveProfile(c.user, { name: $('fullName').value.trim(), year: parseInt($('year').value, 10) }))
+                : auth.signInWithEmailAndPassword(email, password)
+                    .then(c => saveProfile(c.user));
+            job.then(goHome).catch(fail);
+        });
+
+        // Google
+        $('googleBtn').addEventListener('click', () => {
+            busy = true;
+            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+                .then(r => saveProfile(r.user))
+                .then(goHome)
+                .catch(fail);
+        });
+    </script>
+</body>
+</html>
